@@ -1,0 +1,63 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build folders
+build/
+dist/
+.next/
+out/
+
+# React specific
+coverage/
+*.lcov
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor folders
+.vscode/
+.idea/
+
+# Mac system files
+.AppleDouble
+.LSOverride
+
+# Temporary files
+tmp/
+temp/
+
+# Optional npm cache
+.npm
+
+# Parcel / Vite cache
+.cache/
+.parcel-cache/
+
+# Docker
+docker-compose.override.yml
+
+# Misc
+*.tgz
+*.swp
