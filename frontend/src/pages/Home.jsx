@@ -63,7 +63,7 @@ export default function Home() {
             <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-[#EFBF04]">
               Amruta Wellness
             </p>
-            <h1 className="mt-3 sm:mt-4 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1] drop-shadow-sm">
+            <h1 className="mt-3 sm:mt-4 text-5xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1] drop-shadow-sm">
               <span className="text-[#EFBF04]">WELL-NESS</span>
               <br />
               <span className="text-white">THAT GROWS</span>
