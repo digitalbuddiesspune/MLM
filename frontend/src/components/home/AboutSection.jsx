@@ -52,13 +52,7 @@ export default function AboutSection() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-10 overflow-hidden rounded-2xl border border-[#ccd3d8] bg-[#dfe4e8]">
-            <img
-              src={aboutImage}
-              alt="Doctors in hospital corridor"
-              className=""
-            />
-          </div>
+        
 
         </div>
 
@@ -99,6 +93,13 @@ export default function AboutSection() {
           </div>
         </div>
       </div>
+      <div className="relative z-10 mt-10 overflow-hidden rounded-2xl border border-[#ccd3d8] bg-[#dfe4e8]">
+            <img
+              src={aboutImage}
+              alt="Doctors in hospital corridor"
+              className=""
+            />
+          </div>
     </section>
   );
 }
