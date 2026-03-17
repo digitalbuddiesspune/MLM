@@ -16,7 +16,7 @@ export default function BusinessPlanSection() {
 
   return (
     <section id="business-plan" className="relative border-t border-slate-200 bg-[#E5E5E5] px-4 py-16 sm:px-6 lg:px-8 overflow-hidden">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
           {/* Left: label, heading, paragraph */}
           <div>

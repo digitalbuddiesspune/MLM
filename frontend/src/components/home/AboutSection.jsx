@@ -1,4 +1,6 @@
+import aboutImage from '../../assets/banner1.png';
 export default function AboutSection() {
+
   const storyPoints = [
     {
       no: '01',
@@ -19,7 +21,7 @@ export default function AboutSection() {
 
   return (
     <section id="about" className="border-t border-slate-800 bg-[#dfe3e6] px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <div className="relative overflow-hidden rounded-[28px] bg-[#e9edef] px-6 py-12 sm:px-10 sm:py-14 lg:px-16 lg:py-16">
           <span className="absolute left-10 top-20 h-4 w-4 rounded-full bg-[#8ecf5a]" aria-hidden />
           <span className="absolute right-16 top-16 h-4 w-4 rounded-full bg-[#8ecf5a]" aria-hidden />
@@ -52,9 +54,9 @@ export default function AboutSection() {
 
           <div className="relative z-10 mt-10 overflow-hidden rounded-2xl border border-[#ccd3d8] bg-[#dfe4e8]">
             <img
-              src="https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=1800"
+              src={aboutImage}
               alt="Doctors in hospital corridor"
-              className="h-56 w-full object-cover sm:h-64 lg:h-72"
+              className=""
             />
           </div>
 
