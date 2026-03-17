@@ -6,7 +6,7 @@ import AboutSection from '../components/home/AboutSection.jsx';
 import BusinessPlanSection from '../components/home/BusinessPlanSection.jsx';
 import ProductsSection from '../components/home/ProductsSection.jsx';
 import ContactSection from '../components/home/ContactSection.jsx';
-import About from './About.jsx';
+
 import BusinessPlan from './BusinessPlan.jsx';
 
 /** Curved blue waves separating hero image from content panel */
@@ -60,11 +60,11 @@ export default function Home() {
         {/* Content overlay — centered */}
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-8 sm:py-12 text-center">
           <div className="max-w-xl">
-            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-[#EFBF04]">
               Amruta Wellness
             </p>
             <h1 className="mt-3 sm:mt-4 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1] drop-shadow-sm">
-              <span className="text-blue-300">WELL-NESS</span>
+              <span className="text-[#EFBF04]">WELL-NESS</span>
               <br />
               <span className="text-white">THAT GROWS</span>
               <br />
@@ -112,7 +112,7 @@ export default function Home() {
       {/* <ProductsSection /> */}
       <ContactSection />
 
-      <section className="border-t border-slate-100 bg-slate-50 px-4 py-12 sm:py-16 sm:px-6 lg:px-8">
+      <section className="border-t border-slate-300 bg-[#dfe3e6] px-4 py-12 sm:py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Ready to start?</h2>
           <p className="mt-2 text-sm sm:text-base text-slate-600">Create your account and join the network today.</p>

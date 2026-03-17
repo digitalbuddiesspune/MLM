@@ -30,7 +30,7 @@ export default function AboutSection() {
           <span className="absolute left-[18%] top-1/2 h-16 w-16 rounded-full bg-[#c8e8d8]" aria-hidden />
 
           <div className="relative z-10 text-center">
-            <p className="text-sm font-semibold tracking-[0.14em] text-[#7fb85a]">ABOUT US</p>
+            <p className="text-sm font-semibold tracking-[0.14em] text-[#5a8f3f]">ABOUT US</p>
             <h2 className="mt-3 text-4xl font-black leading-tight text-[#101418] sm:text-5xl lg:text-6xl">
               We are changing
               <br />
@@ -58,7 +58,7 @@ export default function AboutSection() {
 
         <div className="mt-10 grid gap-8 lg:grid-cols-2 lg:gap-14">
           <div>
-            <p className="text-sm font-bold tracking-[0.1em] text-[#7fb85a]">OUR STORY</p>
+            <p className="text-sm font-bold tracking-[0.1em] text-[#5a8f3f]">OUR STORY</p>
             <h3 className="mt-4 text-4xl font-bold leading-tight text-[#111827]">
               We are building trusted
               <br />
@@ -82,9 +82,9 @@ export default function AboutSection() {
             {storyPoints.map(({ no, title, desc }) => (
               <article key={no} className="rounded-2xl border border-[#ccd3d8] bg-[#edf1f3] p-5 shadow-sm">
                 <div className="flex gap-3">
-                  <span className="text-3xl font-light leading-none text-[#111827]">{no}.</span>
+                  <span className="text-3xl font-light leading-none text-[#5a8f3f]">{no}.</span>
                   <div>
-                    <h4 className="text-3xl font-bold leading-tight text-[#111827]">{title}</h4>
+                    <h4 className="text-3xl font-bold leading-tight text-[#5a8f3f]">{title}</h4>
                     <p className="mt-2 text-base leading-relaxed text-[#2a3442]">{desc}</p>
                   </div>
                 </div>

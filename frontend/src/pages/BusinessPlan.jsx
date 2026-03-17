@@ -47,7 +47,7 @@ export default function BusinessPlan() {
             <span className="absolute right-10 top-[64%] h-3.5 w-3.5 rounded-full bg-[#5561ff]" aria-hidden />
 
             <div className="relative z-10 text-center">
-              <p className="text-sm font-semibold tracking-[0.14em] text-[#7fb85a]">BUSINESS PLAN</p>
+              <p className="text-sm font-semibold tracking-[0.14em] text-[#5a8f3f]">BUSINESS PLAN</p>
               <h1 className="mt-3 text-4xl font-black leading-tight text-[#101418] sm:text-5xl lg:text-6xl">
                 Build wellness.
                 <br />
@@ -79,7 +79,7 @@ export default function BusinessPlan() {
       <section className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-2 lg:gap-14">
           <div>
-            <p className="text-sm font-bold tracking-[0.1em] text-[#7fb85a]">BINARY MODEL</p>
+            <p className="text-sm font-bold tracking-[0.1em] text-[#5a8f3f]">BINARY MODEL</p>
             <h2 className="mt-4 text-4xl font-bold leading-tight text-[#111827]">
               A simple structure.
               <br />
@@ -103,9 +103,9 @@ export default function BusinessPlan() {
             {businessHighlights.map(({ no, title, desc }) => (
               <article key={no} className="rounded-2xl border border-[#ccd3d8] bg-[#edf1f3] p-5 shadow-sm">
                 <div className="flex gap-3">
-                  <span className="text-3xl font-light leading-none text-[#111827]">{no}.</span>
+                  <span className="text-3xl font-light leading-none text-[#5a8f3f]">{no}.</span>
                   <div>
-                    <h4 className="text-3xl font-bold leading-tight text-[#111827]">{title}</h4>
+                    <h4 className="text-3xl font-bold leading-tight text-[#5a8f3f]">{title}</h4>
                     <p className="mt-2 text-base leading-relaxed text-[#2a3442]">{desc}</p>
                   </div>
                 </div>
@@ -124,7 +124,7 @@ export default function BusinessPlan() {
                 key={step}
                 className="relative overflow-hidden rounded-xl border border-[#ccd3d8] bg-[#f3f6f8] px-4 py-4"
               >
-                <span className="pointer-events-none absolute -right-2 -top-4 text-8xl font-black leading-none text-[#111827]/10">
+                <span className="pointer-events-none absolute -right-2 -top-4 text-8xl font-black leading-none text-[#5a8f3f] opacity-20">
                   {index + 1}
                 </span>
                 <p className="relative z-10 pr-8 text-sm leading-relaxed text-[#2a3442]">
@@ -141,6 +141,9 @@ export default function BusinessPlan() {
             </p>
           </div>
         </div>
+      </section>
+      <section className="px-4  sm:px-6 lg:px-8 rounded-3xl">
+        <img className='rounded-2xl' src="https://res.cloudinary.com/dq3meq3qa/image/upload/v1773731732/Add_a_heading_k5ecfp.svg" alt="" />
       </section>
 
       <section className="border-t border-[#ccd3d8] px-4 py-16 sm:px-6 lg:px-8">

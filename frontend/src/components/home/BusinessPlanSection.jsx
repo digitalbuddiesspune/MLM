@@ -15,14 +15,14 @@ export default function BusinessPlanSection() {
   ];
 
   return (
-    <section id="business-plan" className="relative border-t border-slate-200 bg-[#E5E5E5] px-4 py-16 sm:px-6 lg:px-8 overflow-hidden">
-      <div className="mx-auto max-w-7xl">
+    <section id="business-plan" className="relative border-t border-b border-[#ccd3d8] bg-[#dfe3e6] px-4 py-16 sm:px-6 lg:px-8 overflow-hidden">
+      <div className="mx-auto max-w-7xl ">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
           {/* Left: label, heading, paragraph */}
           <div>
-            <p className="text-sm font-medium text-slate-600 mb-4">Amruta Wellness</p>
+            <p className="text-sm font-bold tracking-[0.1em] text-[#5a8f3f] uppercase mb-4">Amruta Wellness</p>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
-              <span className="text-blue-700">IMPROVING</span>
+              <span className="">IMPROVING</span>
               <br />
               OPERATIONAL EFFICIENCY
             </h2>
@@ -39,14 +39,14 @@ export default function BusinessPlanSection() {
             <div className="rounded-2xl bg-gradient-to-b from-blue-400 to-blue-700 p-6 sm:p-8 lg:p-10 shadow-xl space-y-8">
               {points.map(({ title, desc }) => (
                 <div key={title} className="flex gap-4">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center mt-1 text-white" aria-hidden>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center mt-1 text-[#EFBF04]" aria-hidden>
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
                   </span>
                   <div>
-                    <h3 className="font-bold text-white text-base sm:text-lg">{title}</h3>
-                    <p className="mt-2 text-white/95 text-sm sm:text-base leading-relaxed">{desc}</p>
+                    <h3 className="font-bold text-[#EFBF04] text-base sm:text-lg">{title}</h3>
+                    <p className="mt-2 text-white/75 text-sm sm:text-base leading-relaxed">{desc}</p>
                   </div>
                 </div>
               ))}
