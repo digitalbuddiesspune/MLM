@@ -10,12 +10,9 @@ export async function login(email, password) {
   return data;
 }
 
-export async function register({ name, email, password, sponsorId = null, panNumber = '', bankAccountNumber = '', upiId = '' }) {
-  const body = { name, email, password };
+export async function register({ name, mobile, email, password, sponsorId = null }) {
+  const body = { name, mobile, email, password };
   if (sponsorId && sponsorId.trim()) body.sponsorId = sponsorId.trim();
-  if (panNumber != null && String(panNumber).trim()) body.panNumber = String(panNumber).trim();
-  if (bankAccountNumber != null && String(bankAccountNumber).trim()) body.bankAccountNumber = String(bankAccountNumber).trim();
-  if (upiId != null && String(upiId).trim()) body.upiId = String(upiId).trim();
   const { data } = await api.post('/auth/register', body);
   return data;
 }
@@ -49,8 +46,8 @@ export function isAuthenticated() {
 
 /**
  * Returns the dashboard path for a given role.
- * admin → /admin/dashboard
- * user → /user/dashboard
+ * admin -> /admin/dashboard
+ * user -> /user/dashboard
  */
 export function getDashboardPathForRole(role) {
   if (role === 'admin') return '/admin/dashboard';

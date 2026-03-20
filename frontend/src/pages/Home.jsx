@@ -83,6 +83,9 @@ export default function Home() {
             <p className="mt-5 sm:mt-8 text-sm sm:text-base md:text-lg text-slate-200 leading-relaxed">
               Join a trusted healthcare network. Build your business while helping others live healthier lives.
             </p>
+            <p className="mt-3 text-sm sm:text-base font-medium text-emerald-200">
+              Start your plan by buying products worth Rs 1500.
+            </p>
             <div className="mt-6 sm:mt-10 flex flex-wrap gap-3 sm:gap-4 justify-center">
               <button
                 type="button"
@@ -115,7 +118,9 @@ export default function Home() {
       <section className="border-t border-slate-300 bg-[#dfe3e6] px-4 py-12 sm:py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Ready to start?</h2>
-          <p className="mt-2 text-sm sm:text-base text-slate-600">Create your account and join the network today.</p>
+          <p className="mt-2 text-sm sm:text-base text-slate-600">
+            Buy products worth Rs 1500 to activate your plan and join the network.
+          </p>
           <button
             type="button"
             onClick={openRegister}

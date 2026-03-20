@@ -14,8 +14,27 @@ const TeamIcon = () => (
   </svg>
 );
 
+const LogoutIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+  </svg>
+);
+
+const LevelIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+  </svg>
+);
+
+const LevelItemIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4 shrink-0">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+  </svg>
+);
+
 const sidebarLinks = [
-  { to: '/user/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+  { to: '/user/my-plan', label: 'My Plan', icon: '🛍️' },
+  { to: '/user/ekyc', label: 'eKYC', icon: '📋' },
   { to: '/user/team', label: 'My Team', icon: <TeamIcon /> },
   { to: '/user/binary-tree', label: 'Binary Tree', icon: '🌳' },
   { to: '/user/wallet', label: 'Wallet', icon: '💰' },
@@ -25,12 +44,20 @@ const sidebarLinks = [
   { to: '/user/renewal', label: 'Renewal', icon: '🔄' },
 ];
 
+const levelDropdownLinks = [
+  { to: '/user/level/my-hierarchy', label: 'My Hierarchy' },
+  { to: '/user/level/my-user-list', label: 'My User List' },
+  { to: '/user/level/my-direct', label: 'My Direct' },
+  { to: '/user/level/all-hierarchy', label: 'All Hierarchy' },
+];
+
 export default function UserLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [levelOpen, setLevelOpen] = useState(location.pathname.startsWith('/user/level'));
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -82,6 +109,53 @@ export default function UserLayout() {
           </button>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-2 pb-4 lg:px-2">
+          <Link
+            to="/user/dashboard"
+            title={!sidebarOpen ? 'Dashboard' : undefined}
+            className={`flex items-start rounded-lg px-2 py-2.5 text-sm font-medium transition-colors lg:justify-start ${
+              sidebarOpen ? 'gap-3 px-3 items-center' : 'lg:px-2'
+            } ${
+              isActive('/user/dashboard')
+                ? 'bg-purple-600 text-white'
+                : 'text-purple-100 hover:bg-purple-600/50 hover:text-white'
+            }`}
+          >
+            <span className="flex shrink-0 text-lg [&>svg]:size-5" aria-hidden><DashboardIcon /></span>
+            <span className={sidebarOpen ? '' : 'hidden'}>Dashboard</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setLevelOpen((prev) => !prev)}
+            className={`flex w-full items-center rounded-lg px-2 py-2.5 text-left text-sm font-medium transition-colors ${
+              sidebarOpen ? 'gap-3 px-3' : 'lg:px-2'
+            } ${
+              location.pathname.startsWith('/user/level')
+                ? 'bg-purple-600 text-white'
+                : 'text-purple-100 hover:bg-purple-600/50 hover:text-white'
+            }`}
+          >
+            <span className="flex shrink-0 text-lg [&>svg]:size-5" aria-hidden><LevelIcon /></span>
+            <span className={sidebarOpen ? '' : 'hidden'}>Level</span>
+            <span className={`ml-auto transition-transform ${levelOpen ? 'rotate-180' : ''} ${sidebarOpen ? '' : 'hidden'}`}>▾</span>
+          </button>
+          {levelOpen && (
+            <div className={`${sidebarOpen ? 'ml-8' : 'ml-0'} space-y-0.5`}>
+              {levelDropdownLinks.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                    isActive(item.to)
+                      ? 'bg-purple-500 text-white'
+                      : 'text-purple-100 hover:bg-purple-600/40 hover:text-white'
+                  } ${sidebarOpen ? '' : 'hidden'}`}
+                >
+                  <span className="flex shrink-0 [&>svg]:size-4" aria-hidden><LevelItemIcon /></span>
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          )}
           {sidebarLinks.map(({ to, label, icon }) => (
             <Link
               key={to}
@@ -101,13 +175,21 @@ export default function UserLayout() {
           ))}
         </nav>
         <div className="mt-auto shrink-0 space-y-1 border-t border-purple-600 p-2 lg:px-2">
+          <Link
+            to="/"
+            title="Visit Site"
+            className={`flex w-full items-start rounded-lg px-2 py-2.5 text-left text-sm font-medium text-purple-100 transition-colors hover:bg-purple-600/50 hover:text-white lg:justify-start ${sidebarOpen ? 'gap-3 px-3 items-center' : 'lg:px-2'}`}
+          >
+            <span className="flex shrink-0 text-lg [&>svg]:size-5" aria-hidden>🌐</span>
+            <span className={sidebarOpen ? '' : 'hidden'}>Visit Site</span>
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
             title="Logout"
             className={`flex w-full items-start rounded-lg px-2 py-2.5 text-left text-sm font-medium text-purple-100 transition-colors hover:bg-purple-600/50 hover:text-red-200 lg:justify-start ${sidebarOpen ? 'gap-3 px-3 items-center' : 'lg:px-2'}`}
           >
-            <span className="flex shrink-0 text-lg [&>svg]:size-5" aria-hidden>🚪</span>
+            <span className="flex shrink-0 text-lg [&>svg]:size-5" aria-hidden><LogoutIcon /></span>
             <span className={sidebarOpen ? '' : 'hidden'}>Logout</span>
           </button>
         </div>

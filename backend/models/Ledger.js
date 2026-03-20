@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const LEDGER_TYPES = ['binary', 'generation', 'royalty', 'withdrawal'];
+const LEDGER_TYPES = ['binary', 'generation', 'royalty', 'withdrawal', 'joining_bonus'];
 const LEDGER_STATUSES = ['pending', 'completed', 'failed'];
 
 const ledgerSchema = new mongoose.Schema(

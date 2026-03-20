@@ -3,7 +3,7 @@ import User from '../models/User.js';
 
 const FIELDS_FOR_PLACEMENT = '_id leftChildId rightChildId';
 const FIELDS_FOR_TREE = '_id name email leftChildId rightChildId position';
-const FIELDS_FOR_REFERRAL = '_id name email';
+const FIELDS_FOR_REFERRAL = '_id name email mobile';
 const FIELDS_BINARY_SLOTS = '_id leftChildId rightChildId';
 const MAX_BFS_ITERATIONS = 1_000_000;
 
@@ -138,6 +138,7 @@ export async function getReferralTree(userId, maxDepth = 6) {
       id: String(doc._id),
       name: doc.name || '—',
       email: doc.email,
+      mobile: doc.mobile,
       level,
       children: [],
     };

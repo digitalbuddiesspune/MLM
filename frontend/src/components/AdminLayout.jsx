@@ -33,6 +33,12 @@ const PayoutsIcon = () => (
   </svg>
 );
 
+const OrdersIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.5h16.5M3.75 9h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+  </svg>
+);
+
 const ProductsIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 12 3l9 4.5M4.5 8.25 12 12l7.5-3.75M4.5 12.75 12 16.5l7.5-3.75M4.5 17.25 12 21l7.5-3.75" />
@@ -51,15 +57,35 @@ const BinaryTreeIcon = () => (
   </svg>
 );
 
+const LevelIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+  </svg>
+);
+
+const LevelItemIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4 shrink-0">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+  </svg>
+);
+
 const sidebarLinks = [
-  { to: '/admin/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { to: '/admin/team', label: 'My Team', icon: <TeamIcon /> },
   { to: '/admin/binary-tree', label: 'Binary Tree', icon: <BinaryTreeIcon /> },
   { to: '/admin/users', label: 'Users', icon: <UsersIcon /> },
+  { to: '/admin/kyc-approvals', label: 'KYC Approvals', icon: <UsersIcon /> },
   { to: '/admin/admins', label: 'Admins', icon: <UsersIcon /> },
   { to: '/admin/products', label: 'Products', icon: <ProductsIcon /> },
+  { to: '/admin/orders', label: 'Orders', icon: <OrdersIcon /> },
   { to: '/admin/payouts', label: 'Payouts', icon: <PayoutsIcon /> },
   { to: '/admin/settings', label: 'Settings', icon: <SettingsIcon /> },
+];
+
+const levelDropdownLinks = [
+  { to: '/admin/level/my-hierarchy', label: 'My Hierarchy' },
+  { to: '/admin/level/my-user-list', label: 'My User List' },
+  { to: '/admin/level/my-direct', label: 'My Direct' },
+  { to: '/admin/level/all-hierarchy', label: 'All Hierarchy' },
 ];
 
 export default function AdminLayout() {
@@ -67,6 +93,7 @@ export default function AdminLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [levelOpen, setLevelOpen] = useState(location.pathname.startsWith('/admin/level'));
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -116,6 +143,53 @@ export default function AdminLayout() {
           </button>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-2 pb-4 lg:px-2">
+          <Link
+            to="/admin/dashboard"
+            title={!sidebarOpen ? 'Dashboard' : undefined}
+            className={`flex items-start rounded-lg border-l-4 px-2 py-2.5 text-sm font-medium transition-colors lg:justify-start ${
+              sidebarOpen ? 'gap-3 px-3 items-center' : 'lg:px-2'
+            } ${
+              isActive('/admin/dashboard')
+                ? 'border-amber-500 bg-indigo-900 text-white'
+                : 'border-transparent text-indigo-100 hover:border-slate-400 hover:bg-indigo-800 hover:text-white'
+            }`}
+          >
+            <span className="flex shrink-0 text-lg [&>svg]:size-5" aria-hidden><DashboardIcon /></span>
+            <span className={sidebarOpen ? '' : 'hidden'}>Dashboard</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setLevelOpen((prev) => !prev)}
+            className={`flex w-full items-center rounded-lg border-l-4 px-2 py-2.5 text-left text-sm font-medium transition-colors ${
+              sidebarOpen ? 'gap-3 px-3' : 'lg:px-2'
+            } ${
+              location.pathname.startsWith('/admin/level')
+                ? 'border-amber-500 bg-indigo-900 text-white'
+                : 'border-transparent text-indigo-100 hover:border-slate-400 hover:bg-indigo-800 hover:text-white'
+            }`}
+          >
+            <span className="flex shrink-0 text-lg [&>svg]:size-5" aria-hidden><LevelIcon /></span>
+            <span className={sidebarOpen ? '' : 'hidden'}>Level</span>
+            <span className={`ml-auto transition-transform ${levelOpen ? 'rotate-180' : ''} ${sidebarOpen ? '' : 'hidden'}`}>▾</span>
+          </button>
+          {levelOpen && (
+            <div className={`${sidebarOpen ? 'ml-8' : 'ml-0'} space-y-0.5`}>
+              {levelDropdownLinks.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                    isActive(item.to)
+                      ? 'bg-indigo-800 text-white'
+                      : 'text-indigo-100 hover:bg-indigo-700/70 hover:text-white'
+                  } ${sidebarOpen ? '' : 'hidden'}`}
+                >
+                  <span className="flex shrink-0 [&>svg]:size-4" aria-hidden><LevelItemIcon /></span>
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          )}
           {sidebarLinks.map(({ to, label, icon }) => (
             <Link
               key={to}

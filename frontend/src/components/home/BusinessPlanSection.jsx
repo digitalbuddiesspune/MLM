@@ -1,16 +1,16 @@
 export default function BusinessPlanSection() {
   const points = [
     {
-      title: 'Simplify work processes and workflows',
-      desc: 'Our binary structure lets you build two legs (left and right) with clear processes. You earn through direct referrals and team activity with straightforward reporting.',
+      title: 'Auto-activation in binary tree',
+      desc: 'If A is parent and B/C are child nodes, user A gets activated automatically when both B and C join.',
     },
     {
-      title: 'Reduce unnecessary costs and waste',
-      desc: 'Matching bonus on left and right team volume keeps incentives aligned. No hidden fees—transparent payouts and a simple structure designed for fairness.',
+      title: 'Start plan with Rs 1500 products',
+      desc: 'Each user can buy products worth Rs 1500 to start the plan, then add members using their sponsor ID.',
     },
     {
-      title: 'Improve productivity through better planning',
-      desc: 'Earn through multiple levels of your network with generation bonuses. A one-time activation and annual renewal keep your position and benefits active.',
+      title: 'Level rewards and joining bonus',
+      desc: 'From Star to Diamond, each level has a reward and fixed joining bonus based on total users you add.',
     },
   ];
 

@@ -2,10 +2,16 @@ import mongoose from 'mongoose';
 
 const ROLES = ['user', 'admin'];
 const POSITIONS = ['left', 'right'];
+const KYC_STATUSES = ['none', 'pending', 'approved', 'rejected'];
 
 const userSchema = new mongoose.Schema(
   {
     name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    mobile: {
       type: String,
       required: true,
       trim: true,
@@ -58,6 +64,17 @@ const userSchema = new mongoose.Schema(
       default: false,
       required: true,
     },
+    kycStatus: {
+      type: String,
+      enum: KYC_STATUSES,
+      default: 'none',
+      required: true,
+    },
+    isApproved: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
     activationDate: {
       type: Date,
       default: null,
@@ -76,23 +93,27 @@ const userSchema = new mongoose.Schema(
       default: 'Beginner',
       required: true,
     },
-    panNumber: {
-      type: String,
-      trim: true,
-      default: '',
+    level: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 6,
       required: true,
     },
-    bankAccountNumber: {
-      type: String,
-      trim: true,
-      default: '',
+    sponsoredUsersCount: {
+      type: Number,
+      default: 0,
+      min: 0,
       required: true,
     },
-    upiId: {
+    levelReward: {
       type: String,
-      trim: true,
       default: '',
-      required: true,
+    },
+    joiningBonusAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
   {

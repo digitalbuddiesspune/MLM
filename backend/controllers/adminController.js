@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Ledger from '../models/Ledger.js';
 import PayoutRun from '../models/PayoutRun.js';
+import { syncUserLevel } from '../services/levelService.js';
 
 /**
  * GET /api/admin/stats
@@ -101,24 +102,25 @@ export async function getUsers(req, res, next) {
 
 /**
  * PATCH /api/admin/users/:id
- * Update user details (name, email, role, isActive, panNumber, bankAccountNumber, upiId). Admin only.
+ * Update user details (name, email, mobile, role, isActive). Admin only.
  */
 export async function updateUser(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, email, role, isActive, panNumber, bankAccountNumber, upiId } = req.body;
+    const { name, email, mobile, role, isActive } = req.body;
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ success: false, error: 'Invalid user id' });
     }
 
-    const user = await User.findById(id).select('name email role isActive panNumber bankAccountNumber upiId').lean();
+    const user = await User.findById(id).select('name email mobile role isActive').lean();
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const updates = {};
     if (typeof name === 'string' && name.trim()) updates.name = name.trim();
+    if (typeof mobile === 'string' && mobile.trim()) updates.mobile = mobile.trim();
     if (typeof email === 'string' && email.trim()) {
       const normalized = email.trim().toLowerCase();
       if (normalized !== user.email) {
@@ -131,9 +133,6 @@ export async function updateUser(req, res, next) {
     }
     if (role === 'user' || role === 'admin') updates.role = role;
     if (typeof isActive === 'boolean') updates.isActive = isActive;
-    if (panNumber !== undefined) updates.panNumber = typeof panNumber === 'string' ? panNumber.trim() : '';
-    if (bankAccountNumber !== undefined) updates.bankAccountNumber = typeof bankAccountNumber === 'string' ? bankAccountNumber.trim() : '';
-    if (upiId !== undefined) updates.upiId = typeof upiId === 'string' ? upiId.trim() : '';
 
     const updated = await User.findByIdAndUpdate(
       id,
@@ -161,7 +160,7 @@ export async function deleteUser(req, res, next) {
       return res.status(400).json({ success: false, error: 'Invalid user id' });
     }
 
-    const user = await User.findById(id).select('parentId position').lean();
+    const user = await User.findById(id).select('parentId position sponsorId').lean();
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -174,6 +173,9 @@ export async function deleteUser(req, res, next) {
     }
 
     await User.findByIdAndDelete(id);
+    if (user.sponsorId) {
+      await syncUserLevel(user.sponsorId);
+    }
     res.json({ success: true, data: { deleted: true } });
   } catch (error) {
     next(error);

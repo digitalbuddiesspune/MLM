@@ -75,9 +75,11 @@ export default function AdminUsers() {
           <thead className="bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Mobile</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Email</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Role</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">KYC</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Rank</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Joined</th>
             </tr>
@@ -85,16 +87,17 @@ export default function AdminUsers() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500 text-sm">Loading…</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-sm">Loading…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500 text-sm">No users found.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-sm">No users found.</td>
               </tr>
             ) : (
               users.map((u) => (
                 <tr key={u._id}>
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">{u.name}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{u.mobile ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{u.email}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
@@ -104,6 +107,16 @@ export default function AdminUsers() {
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                       {u.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      u.kycStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                      u.kycStatus === 'pending' ? 'bg-amber-100 text-amber-700' :
+                      u.kycStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {u.kycStatus ?? 'none'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">{u.rank ?? '—'}</td>

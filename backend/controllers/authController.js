@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 import { register as registerUser, login as loginUser } from '../services/userService.js';
 

@@ -50,3 +50,8 @@ export async function deleteProduct(id) {
   const { data } = await api.delete(`/admin/products/${id}`);
   return data;
 }
+
+export async function getAdminOrders(params = {}) {
+  const { data } = await api.get('/admin/orders', { params });
+  return data;
+}

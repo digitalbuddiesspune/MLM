@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Wallet from '../models/Wallet.js';
 import Ledger from '../models/Ledger.js';
 
-const LEDGER_TYPES = ['binary', 'generation', 'royalty', 'withdrawal'];
+const LEDGER_TYPES = ['binary', 'generation', 'royalty', 'withdrawal', 'joining_bonus'];
 
 /**
  * Adds income to a user's wallet and records a ledger entry atomically.
@@ -10,7 +10,7 @@ const LEDGER_TYPES = ['binary', 'generation', 'royalty', 'withdrawal'];
  * When session is provided, runs inside caller's transaction (no commit/abort).
  * @param {import('mongoose').Types.ObjectId} userId
  * @param {number} amount
- * @param {'binary' | 'generation' | 'royalty' | 'withdrawal'} type
+ * @param {'binary' | 'generation' | 'royalty' | 'withdrawal' | 'joining_bonus'} type
  * @param {import('mongoose').Types.ObjectId} [referenceId]
  * @param {import('mongoose').ClientSession} [session] - Optional; when provided, caller owns transaction
  * @returns {Promise<{ wallet: Object, ledger: Object }>}

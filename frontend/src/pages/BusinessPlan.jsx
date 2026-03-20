@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../api/products.js';
+import { isAuthenticated } from '../api/auth.js';
 
 export default function BusinessPlan() {
   const businessHighlights = [
@@ -22,11 +23,20 @@ export default function BusinessPlan() {
   ];
 
   const binarySteps = [
-    'Join Amruta Wellness by purchasing any wellness product worth ₹1500.',
-    'Refer two direct partners under your left and right teams.',
-    'As they invite others, your binary tree grows deeper and wider.',
-    'New joinings are placed under one of the two legs based on team growth.',
-    'You benefit from the collective activity and performance of your network.',
+    'User A is the parent node; users B and C are child nodes in the binary tree.',
+    'When both B and C join under A, user A gets automatically activated.',
+    'Each user joins the plan by purchasing products worth Rs 1500.',
+    'Users can sponsor new members using their sponsor ID and grow their network.',
+    'Level, reward, and joining bonus are applied based on total sponsored users.',
+  ];
+
+  const levelSets = [
+    { level: 'Level 1', name: 'Star', minUsers: '10+', reward: 'Remote', joiningBonus: 'Rs 20' },
+    { level: 'Level 2', name: 'Rubi Star', minUsers: '100+', reward: 'Digital Watch', joiningBonus: 'Rs 10' },
+    { level: 'Level 3', name: 'Silver', minUsers: '1000+', reward: 'Mobile', joiningBonus: 'Rs 10' },
+    { level: 'Level 4', name: 'Platinum', minUsers: '5000+', reward: 'Laptop', joiningBonus: 'Rs 10' },
+    { level: 'Level 5', name: 'Gold', minUsers: '20000+', reward: 'Two Wheeler', joiningBonus: 'Rs 10' },
+    { level: 'Level 6', name: 'Diamond', minUsers: '100000+', reward: 'Four Wheeler', joiningBonus: 'Rs 8' },
   ];
 
   const { data: products = [], isLoading: loading, error: queryError } = useQuery({
@@ -93,8 +103,8 @@ export default function BusinessPlan() {
             <div className="mt-8 rounded-2xl border border-[#ccd3d8] bg-[#edf1f3] p-6">
               <h3 className="text-xl font-bold text-[#111827]">How it starts</h3>
               <p className="mt-3 text-base leading-relaxed text-[#2a3442]">
-                Join with a wellness product, refer two direct partners, and begin building a balanced network that
-                rewards consistency and teamwork.
+              If A is parent and B/C are child nodes, A becomes active when both B and C join. Every user starts by
+              buying products worth Rs 1500 and then grows through sponsor-based referrals.
               </p>
             </div>
           </div>
@@ -139,6 +149,37 @@ export default function BusinessPlan() {
               We believe good health and financial independence go hand in hand. Through quality wellness products and
               a transparent business model, Amruta Wellness empowers individuals to build better lives.
             </p>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-[#ccd3d8] bg-[#f3f6f8] p-6">
+            <h3 className="text-xl font-bold text-[#111827]">Level Sets, Rewards and Joining Bonus</h3>
+            <p className="mt-2 text-sm text-[#2a3442]">
+              Levels are based on how many users you add with your sponsor ID.
+            </p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#ccd3d8] text-[#111827]">
+                    <th className="px-3 py-2 font-semibold">Level</th>
+                    <th className="px-3 py-2 font-semibold">Level Name</th>
+                    <th className="px-3 py-2 font-semibold">Users Added</th>
+                    <th className="px-3 py-2 font-semibold">Reward</th>
+                    <th className="px-3 py-2 font-semibold">Joining Bonus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {levelSets.map((item) => (
+                    <tr key={item.level} className="border-b border-[#dde3e8] last:border-b-0">
+                      <td className="px-3 py-2 font-medium text-[#5a8f3f]">{item.level}</td>
+                      <td className="px-3 py-2 text-[#111827]">{item.name}</td>
+                      <td className="px-3 py-2 text-[#2a3442]">{item.minUsers}</td>
+                      <td className="px-3 py-2 text-[#2a3442]">{item.reward}</td>
+                      <td className="px-3 py-2 text-[#2a3442]">{item.joiningBonus}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -190,7 +231,7 @@ export default function BusinessPlan() {
                       </span>
                     </div>
                     <Link
-                      to="/register"
+                      to={isAuthenticated() ? `/checkout?productId=${product._id}` : '/register'}
                       className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#0b0d10] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1c232b]"
                     >
                       I'm Interested

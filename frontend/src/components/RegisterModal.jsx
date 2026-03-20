@@ -4,12 +4,10 @@ import { register as registerApi, setAuth, getDashboardPathForRole } from '../ap
 
 export default function RegisterModal({ onClose, onSwitchToLogin }) {
   const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sponsorId, setSponsorId] = useState('');
-  const [panNumber, setPanNumber] = useState('');
-  const [bankAccountNumber, setBankAccountNumber] = useState('');
-  const [upiId, setUpiId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -21,12 +19,10 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
     try {
       const response = await registerApi({
         name: name.trim(),
+        mobile: mobile.trim(),
         email: email.trim(),
         password,
         sponsorId: sponsorId.trim() || null,
-        panNumber: panNumber.trim() || '',
-        bankAccountNumber: bankAccountNumber.trim() || '',
-        upiId: upiId.trim() || '',
       });
       const { token, user } = response.data;
       setAuth(token, user);
@@ -43,7 +39,7 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-slate-900/50" onClick={onClose} aria-hidden />
-      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
         <button
           type="button"
           onClick={onClose}
@@ -63,7 +59,7 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="modal-name" className="block text-sm font-medium text-slate-700">Full name <span className="text-red-500">*</span></label>
             <input
@@ -73,6 +69,20 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
               onChange={(e) => setName(e.target.value)}
               required
               autoComplete="name"
+              disabled={loading}
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
+            />
+          </div>
+          <div>
+            <label htmlFor="modal-mobile" className="block text-sm font-medium text-slate-700">Mobile number <span className="text-red-500">*</span></label>
+            <input
+              id="modal-mobile"
+              type="tel"
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
+              required
+              autoComplete="tel"
+              placeholder="e.g. 9876543210"
               disabled={loading}
               className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
             />
@@ -116,55 +126,18 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
               className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
             />
           </div>
-          <div>
-            <label htmlFor="modal-pan" className="block text-sm font-medium text-slate-700">PAN number <span className="text-red-500">*</span></label>
-            <input
-              id="modal-pan"
-              type="text"
-              value={panNumber}
-              onChange={(e) => setPanNumber(e.target.value)}
-              required
-              placeholder="e.g. ABCDE1234F"
-              disabled={loading}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
-            />
-          </div>
-          <div>
-            <label htmlFor="modal-bank" className="block text-sm font-medium text-slate-700">Bank account number <span className="text-red-500">*</span></label>
-            <input
-              id="modal-bank"
-              type="text"
-              value={bankAccountNumber}
-              onChange={(e) => setBankAccountNumber(e.target.value)}
-              required
-              placeholder="Bank account number"
-              disabled={loading}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="modal-upi" className="block text-sm font-medium text-slate-700">UPI ID <span className="text-red-500">*</span></label>
-            <input
-              id="modal-upi"
-              type="text"
-              value={upiId}
-              onChange={(e) => setUpiId(e.target.value)}
-              required
-              placeholder="e.g. name@upi"
-              disabled={loading}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
-            />
-          </div>
           <button
             type="submit"
             disabled={loading}
-            className="sm:col-span-2 w-full rounded-lg bg-teal-600 px-4 py-3 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            className="w-full rounded-lg bg-teal-600 px-4 py-3 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
             {loading ? 'Creating account…' : 'Create account'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-4 text-center text-xs text-slate-500">After registration you will need to complete eKYC verification.</p>
+
+        <p className="mt-4 text-center text-sm text-slate-600">
           Already have an account?{' '}
           <button
             type="button"
