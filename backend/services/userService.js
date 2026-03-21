@@ -34,28 +34,30 @@ export async function register(payload) {
   }
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-  const hasSponsor = sponsorId && mongoose.isValidObjectId(sponsorId);
+  const normalizedSponsorId = String(sponsorId ?? '').trim();
+  if (!normalizedSponsorId) {
+    const err = new Error('Sponsor ID is required');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!mongoose.isValidObjectId(normalizedSponsorId)) {
+    const err = new Error('Sponsor ID must be a valid MongoDB ObjectId');
+    err.statusCode = 400;
+    throw err;
+  }
 
-  if (!hasSponsor) {
-    const [createdUser] = await User.create([
-      {
-        name: name.trim(),
-        mobile: mobile.trim(),
-        email: email?.toLowerCase().trim(),
-        password: hashedPassword,
-        sponsorId: null,
-        parentId: null,
-        position: null,
-      },
-    ]);
-    return User.findById(createdUser._id).select('-password').lean();
+  const sponsor = await User.findById(normalizedSponsorId).select('_id').lean();
+  if (!sponsor) {
+    const err = new Error('Sponsor not found');
+    err.statusCode = 404;
+    throw err;
   }
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { parentId, position } = await findBinaryPlacement(sponsorId, session);
+    const { parentId, position } = await findBinaryPlacement(normalizedSponsorId, session);
 
     const [createdUser] = await User.create(
       [
@@ -64,7 +66,7 @@ export async function register(payload) {
           mobile: mobile.trim(),
           email: email?.toLowerCase().trim(),
           password: hashedPassword,
-          sponsorId,
+          sponsorId: normalizedSponsorId,
           parentId,
           position,
         },
@@ -79,7 +81,7 @@ export async function register(payload) {
       { session }
     );
 
-    await applySponsorJoinEffects(sponsorId, createdUser._id, session);
+    await applySponsorJoinEffects(normalizedSponsorId, createdUser._id, session);
     await autoActivateEligibleUplines(parentId, session);
 
     await session.commitTransaction();

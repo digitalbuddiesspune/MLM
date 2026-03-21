@@ -2,7 +2,38 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import Order from '../models/Order.js';
+import User from '../models/User.js';
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from '../config/razorpay.js';
+import { addIncome } from '../services/walletService.js';
+
+// Credit 5% on each eligible child order; left + right totals 10%.
+const BINARY_PAIR_BONUS_PERCENT = 5;
+
+async function creditBinaryPairBonusIfEligible(order) {
+  if (!order || order.binaryPairBonusCreditedAt) return false;
+
+  const buyer = await User.findById(order.userId)
+    .select('parentId')
+    .lean();
+
+  if (!buyer?.parentId) return false;
+
+  const parent = await User.findById(buyer.parentId)
+    .select('_id leftChildId rightChildId')
+    .lean();
+
+  const hasBothChildren = Boolean(parent?.leftChildId && parent?.rightChildId);
+  if (!parent?._id || !hasBothChildren) return false;
+
+  const bonusAmount = Number((((order.amount ?? 0) * BINARY_PAIR_BONUS_PERCENT) / 100).toFixed(2));
+  if (bonusAmount <= 0) return false;
+
+  await addIncome(parent._id, bonusAmount, 'binary', order._id);
+  order.binaryPairBonusAmount = bonusAmount;
+  order.binaryPairBonusUserId = parent._id;
+  order.binaryPairBonusCreditedAt = new Date();
+  return true;
+}
 
 export async function createOrder(req, res, next) {
   try {
@@ -76,6 +107,10 @@ export async function verifyOrderPayment(req, res, next) {
       return res.status(403).json({ success: false, error: 'Not authorized for this order' });
     }
     if (order.status === 'paid') {
+      const changed = await creditBinaryPairBonusIfEligible(order);
+      if (changed) {
+        await order.save();
+      }
       return res.json({ success: true, data: { order } });
     }
 
@@ -97,6 +132,9 @@ export async function verifyOrderPayment(req, res, next) {
     order.razorpayPaymentId = razorpayPaymentId;
     order.razorpaySignature = razorpaySignature;
     order.paidAt = new Date();
+
+    await creditBinaryPairBonusIfEligible(order);
+
     await order.save();
 
     res.json({ success: true, data: { order } });

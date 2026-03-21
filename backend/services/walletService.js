@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Wallet from '../models/Wallet.js';
 import Ledger from '../models/Ledger.js';
+import User from '../models/User.js';
 
 const LEDGER_TYPES = ['binary', 'generation', 'royalty', 'withdrawal', 'joining_bonus'];
 
@@ -62,6 +63,12 @@ export async function addIncome(userId, amount, type, referenceId = null, sessio
       { userId },
       { $inc: { balance: amount } },
       { new: true, session: activeSession }
+    );
+
+    await User.findByIdAndUpdate(
+      userId,
+      { $inc: { walletBalance: amount } },
+      { session: activeSession }
     );
 
     if (ownSession) {

@@ -56,6 +56,20 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    binaryPairBonusAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    binaryPairBonusUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    binaryPairBonusCreditedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

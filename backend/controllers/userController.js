@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Ledger from '../models/Ledger.js';
 import { getBinaryTree as getBinaryTreeData, getReferralTree as getReferralTreeData } from '../services/treeService.js';
 
 /**
@@ -58,6 +59,47 @@ export async function getReferralTree(req, res, next) {
     res.json({
       success: true,
       data: { tree },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/user/wallet
+ * Returns logged-in user's wallet balance.
+ */
+export async function getMyWallet(req, res, next) {
+  try {
+    const userId = req.userId;
+    const user = await User.findById(userId)
+      .select('walletBalance')
+      .lean();
+    res.json({
+      success: true,
+      data: {
+        balance: user?.walletBalance ?? 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/user/transactions
+ * Returns logged-in user's ledger entries.
+ */
+export async function getMyTransactions(req, res, next) {
+  try {
+    const userId = req.userId;
+    const transactions = await Ledger.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: { transactions },
     });
   } catch (error) {
     next(error);
