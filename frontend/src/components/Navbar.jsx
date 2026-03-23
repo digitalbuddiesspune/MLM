@@ -26,12 +26,12 @@ export default function Navbar({ onOpenLogin, onOpenRegister, transparent = fals
 
   return (
     <header className={headerClass}>
-      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 py-2">
+      <nav className="flex justify-between max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 py-2">
         <Link to="/" className={linkClass}>
           <img
             src="/amruta-wellness-logo.png"
             alt="Amruta Wellness"
-            className={transparent ? 'h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 object-contain' : 'h-20 w-20 object-contain'}
+            className={transparent ? 'h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 object-contain' : 'h-24 w-24 object-contain'}
           />
         </Link>
 

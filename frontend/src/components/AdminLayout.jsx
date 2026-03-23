@@ -127,7 +127,7 @@ export default function AdminLayout() {
             <img
               src="/amruta-wellness-logo.png"
               alt="Amruta Wellness"
-              className="h-8 w-8 shrink-0 object-contain"
+              className="h-10 w-10 shrink-0 object-contain"
             />
             <span className={sidebarOpen ? '' : 'hidden'}>Admin</span>
           </Link>

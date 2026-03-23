@@ -16,7 +16,7 @@ export default function Products() {
           <img
             src="/amruta-wellness-logo.png"
             alt="Amruta Wellness"
-            className="mx-auto h-12 w-12 object-contain"
+            className="mx-auto h-16 w-16 object-contain"
           />
           <h1 className="mt-4 text-4xl font-bold text-slate-900">Our products</h1>
           <p className="mt-4 text-lg text-slate-600">

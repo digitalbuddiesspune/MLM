@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register as registerApi, setAuth, getDashboardPathForRole } from '../api/auth.js';
 
@@ -7,14 +7,27 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [sponsorId, setSponsorId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (password !== confirmPassword) {
+      setError('Password and confirm password must match');
+      return;
+    }
     setLoading(true);
     try {
       const response = await registerApi({
@@ -38,7 +51,7 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-slate-900/50" onClick={onClose} aria-hidden />
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
         <button
           type="button"
@@ -107,6 +120,21 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              disabled={loading}
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
+            />
+          </div>
+          <div>
+            <label htmlFor="modal-reg-confirm-password" className="block text-sm font-medium text-slate-700">
+              Confirm password <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="modal-reg-confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               autoComplete="new-password"
               disabled={loading}
