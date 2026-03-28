@@ -42,6 +42,7 @@ import Ekyc from "../pages/user/Ekyc";
 import KycApprovals from "../pages/admin/KycApprovals";
 import Checkout from "../pages/Checkout";
 import AdminOrders from "../pages/admin/Orders";
+import AdminUserWallets from "../pages/admin/UserWallets";
 
 const router = createBrowserRouter(
   createRoutesFromChildren(
@@ -88,6 +89,7 @@ const router = createBrowserRouter(
         <Route path="admins" element={<Admins />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="orders" element={<AdminOrders />} />
+        <Route path="user-wallets" element={<AdminUserWallets />} />
         <Route path="products/new" element={<AdminProductForm />} />
         <Route path="products/:id/edit" element={<AdminProductForm />} />
         <Route path="payouts" element={<AdminPayouts />} />

@@ -55,3 +55,18 @@ export async function getAdminOrders(params = {}) {
   const { data } = await api.get('/admin/orders', { params });
   return data;
 }
+
+export async function getAdminUserWallets(params = {}) {
+  const { data } = await api.get('/admin/user-wallets', { params });
+  return data;
+}
+
+export async function getAdminWithdrawalRequests(params = {}) {
+  const { data } = await api.get('/admin/withdrawal-requests', { params });
+  return data;
+}
+
+export async function reviewAdminWithdrawalRequest(id, payload) {
+  const { data } = await api.patch(`/admin/withdrawal-requests/${id}`, payload);
+  return data;
+}

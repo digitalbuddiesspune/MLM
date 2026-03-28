@@ -26,7 +26,7 @@ export default function Navbar({ onOpenLogin, onOpenRegister, transparent = fals
 
   return (
     <header className={headerClass}>
-      <nav className="flex justify-between max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 py-2">
+      <nav className="flex mx-auto max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 py-2">
         <Link to="/" className={linkClass}>
           <img
             src="/amruta-wellness-logo.png"

@@ -4,8 +4,12 @@ import { getProductById } from '../api/products.js';
 import { createOrder, verifyOrderPayment } from '../api/orders.js';
 import { getStoredUser } from '../api/auth.js';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Checkout() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [paying, setPaying] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState('');
   const [searchParams] = useSearchParams();
@@ -74,7 +78,12 @@ export default function Checkout() {
             razorpayPaymentId: response.razorpay_payment_id,
             razorpaySignature: response.razorpay_signature,
           });
+          queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
+          queryClient.invalidateQueries({ queryKey: ['user', 'renewal-orders'] });
           setPaymentMessage('Payment successful. Your order has been placed.');
+          setTimeout(() => {
+            navigate('/user/my-plan');
+          }, 700);
         },
       };
 

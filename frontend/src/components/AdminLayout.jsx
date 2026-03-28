@@ -33,6 +33,12 @@ const PayoutsIcon = () => (
   </svg>
 );
 
+const WalletIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12V8.25A2.25 2.25 0 0 0 18.75 6H5.25A2.25 2.25 0 0 0 3 8.25v7.5A2.25 2.25 0 0 0 5.25 18h13.5A2.25 2.25 0 0 0 21 15.75V12Zm0 0h-3.75a1.5 1.5 0 0 1 0-3H21v3Z" />
+  </svg>
+);
+
 const OrdersIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.5h16.5M3.75 9h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
@@ -77,6 +83,7 @@ const sidebarLinks = [
   { to: '/admin/admins', label: 'Admins', icon: <UsersIcon /> },
   { to: '/admin/products', label: 'Products', icon: <ProductsIcon /> },
   { to: '/admin/orders', label: 'Orders', icon: <OrdersIcon /> },
+  { to: '/admin/user-wallets', label: 'User Wallets', icon: <WalletIcon /> },
   { to: '/admin/payouts', label: 'Payouts', icon: <PayoutsIcon /> },
   { to: '/admin/settings', label: 'Settings', icon: <SettingsIcon /> },
 ];

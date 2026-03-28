@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Ledger from '../models/Ledger.js';
 import PayoutRun from '../models/PayoutRun.js';
+import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import { syncUserLevel } from '../services/levelService.js';
 
 /**
@@ -97,6 +98,290 @@ export async function getUsers(req, res, next) {
     });
   } catch (error) {
     next(error);
+  }
+}
+
+/**
+ * GET /api/admin/user-wallets?page=1&limit=10&search=&role=
+ * List users with wallet balance for admin wallet monitoring.
+ */
+export async function getUserWallets(req, res, next) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const search = (req.query.search || '').trim();
+    const role = (req.query.role || '').trim();
+
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { mobile: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (role === 'user' || role === 'admin') {
+      filter.role = role;
+    }
+
+    const [users, total, totals] = await Promise.all([
+      User.find(filter)
+        .select('name email mobile role isActive kycStatus walletBalance createdAt')
+        .sort({ walletBalance: -1, createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(filter),
+      User.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            totalWalletBalance: { $sum: '$walletBalance' },
+          },
+        },
+      ]),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        users,
+        summary: {
+          totalWalletBalance: totals[0]?.totalWalletBalance ?? 0,
+        },
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/admin/withdrawal-requests?page=1&limit=10&status=&search=
+ * List all user withdrawal requests for payout processing.
+ */
+export async function getWithdrawalRequests(req, res, next) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const status = (req.query.status || '').trim();
+    const search = (req.query.search || '').trim();
+
+    const filter = {};
+    if (status && ['pending', 'approved', 'rejected', 'paid'].includes(status)) {
+      filter.status = status;
+    }
+
+    const pipeline = [
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+    ];
+
+    if (search) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'user.name': { $regex: search, $options: 'i' } },
+            { 'user.email': { $regex: search, $options: 'i' } },
+            { 'user.mobile': { $regex: search, $options: 'i' } },
+          ],
+        },
+      });
+    }
+
+    const [countResult, requests] = await Promise.all([
+      WithdrawalRequest.aggregate([...pipeline, { $count: 'total' }]),
+      WithdrawalRequest.aggregate([
+        ...pipeline,
+        { $sort: { createdAt: -1 } },
+        { $skip: (page - 1) * limit },
+        { $limit: limit },
+        {
+          $project: {
+            amount: 1,
+            status: 1,
+            bankAccountNumber: 1,
+            ifscCode: 1,
+            bankName: 1,
+            branchName: 1,
+            remarks: 1,
+            createdAt: 1,
+            reviewedAt: 1,
+            userId: {
+              _id: '$user._id',
+              name: '$user.name',
+              email: '$user.email',
+              mobile: '$user.mobile',
+            },
+          },
+        },
+      ]),
+    ]);
+
+    const total = countResult[0]?.total ?? 0;
+
+    res.json({
+      success: true,
+      data: {
+        requests,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / limit)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * PATCH /api/admin/withdrawal-requests/:id
+ * Update withdrawal request status (approved/rejected/paid).
+ */
+export async function reviewWithdrawalRequest(req, res, next) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params;
+    const nextStatus = String(req.body?.status || '').trim().toLowerCase();
+    const remarks = String(req.body?.remarks || '').trim();
+
+    if (!mongoose.isValidObjectId(id)) {
+      const err = new Error('Invalid withdrawal request id');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!['approved', 'rejected', 'paid'].includes(nextStatus)) {
+      const err = new Error('Status must be one of: approved, rejected, paid');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const request = await WithdrawalRequest.findById(id).session(session);
+    if (!request) {
+      const err = new Error('Withdrawal request not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const currentStatus = request.status;
+    if (currentStatus === 'rejected' || currentStatus === 'paid') {
+      const err = new Error(`Cannot update a ${currentStatus} request`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (nextStatus === 'approved') {
+      if (currentStatus !== 'pending') {
+        const err = new Error('Only pending requests can be approved');
+        err.statusCode = 400;
+        throw err;
+      }
+      request.status = 'approved';
+      request.reviewedBy = req.userId;
+      request.reviewedAt = new Date();
+      if (remarks) request.remarks = remarks;
+      await request.save({ session });
+    } else if (nextStatus === 'paid') {
+      if (currentStatus !== 'approved') {
+        const err = new Error('Only approved requests can be marked paid');
+        err.statusCode = 400;
+        throw err;
+      }
+      request.status = 'paid';
+      request.reviewedBy = req.userId;
+      request.reviewedAt = new Date();
+      if (remarks) request.remarks = remarks;
+      await request.save({ session });
+
+      await Ledger.updateMany(
+        {
+          userId: request.userId,
+          type: 'withdrawal',
+          referenceId: request._id,
+          status: 'pending',
+        },
+        { $set: { status: 'completed' } },
+        { session }
+      );
+    } else if (nextStatus === 'rejected') {
+      if (!['pending', 'approved'].includes(currentStatus)) {
+        const err = new Error('Only pending/approved requests can be rejected');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      request.status = 'rejected';
+      request.reviewedBy = req.userId;
+      request.reviewedAt = new Date();
+      if (remarks) request.remarks = remarks;
+      await request.save({ session });
+
+      await Ledger.updateMany(
+        {
+          userId: request.userId,
+          type: 'withdrawal',
+          referenceId: request._id,
+          status: 'pending',
+        },
+        { $set: { status: 'failed' } },
+        { session }
+      );
+
+      await User.findByIdAndUpdate(
+        request.userId,
+        { $inc: { walletBalance: request.amount } },
+        { session }
+      );
+
+      const wallet = await Wallet.findOne({ userId: request.userId }).session(session);
+      if (wallet) {
+        wallet.balance = Number((Number(wallet.balance ?? 0) + Number(request.amount ?? 0)).toFixed(2));
+        await wallet.save({ session });
+      } else {
+        await Wallet.create(
+          [
+            {
+              userId: request.userId,
+              balance: Number(request.amount ?? 0),
+            },
+          ],
+          { session }
+        );
+      }
+    }
+
+    await session.commitTransaction();
+
+    const updated = await WithdrawalRequest.findById(id)
+      .populate('userId', 'name email mobile')
+      .lean();
+
+    res.json({ success: true, data: { request: updated } });
+  } catch (error) {
+    await session.abortTransaction();
+    next(error);
+  } finally {
+    await session.endSession();
   }
 }
 

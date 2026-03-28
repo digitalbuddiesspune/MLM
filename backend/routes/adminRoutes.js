@@ -1,5 +1,13 @@
 import { Router } from 'express';
-import { getStats, getUsers, updateUser, deleteUser } from '../controllers/adminController.js';
+import {
+  getStats,
+  getUsers,
+  getUserWallets,
+  getWithdrawalRequests,
+  reviewWithdrawalRequest,
+  updateUser,
+  deleteUser,
+} from '../controllers/adminController.js';
 import { listKycHandler, reviewKycHandler } from '../controllers/kycController.js';
 import { createProduct, updateProduct, deleteProduct } from '../controllers/productController.js';
 import { getAdminOrders } from '../controllers/orderController.js';
@@ -9,6 +17,9 @@ const router = Router();
 
 router.get('/stats', requireAuth, requireAdmin, getStats);
 router.get('/users', requireAuth, requireAdmin, getUsers);
+router.get('/user-wallets', requireAuth, requireAdmin, getUserWallets);
+router.get('/withdrawal-requests', requireAuth, requireAdmin, getWithdrawalRequests);
+router.patch('/withdrawal-requests/:id', requireAuth, requireAdmin, reviewWithdrawalRequest);
 router.patch('/users/:id', requireAuth, requireAdmin, updateUser);
 router.delete('/users/:id', requireAuth, requireAdmin, deleteUser);
 

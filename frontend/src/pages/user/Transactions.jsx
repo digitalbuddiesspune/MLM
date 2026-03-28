@@ -54,8 +54,8 @@ export default function Transactions() {
                     {txn.createdAt ? new Date(txn.createdAt).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{formatType(txn.type)}</td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold text-emerald-700">
-                    +₹{Number(txn.amount ?? 0).toLocaleString()}
+                  <td className={`px-4 py-3 text-right text-sm font-semibold ${Number(txn.amount ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {Number(txn.amount ?? 0) >= 0 ? '+' : '-'}₹{Math.abs(Number(txn.amount ?? 0)).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">
                     {txn.status ? formatType(txn.status) : 'Completed'}

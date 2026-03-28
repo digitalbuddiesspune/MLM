@@ -1,5 +1,8 @@
 import { useState } from 'react';
+import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
+import { getMyWallet, getMyTransactions, getMyTeam } from '../../api/user.js';
 
 const DashboardIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-7 shrink-0">
@@ -11,6 +14,51 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false);
   const user = getStoredUser();
   const referralId = user?._id ?? '';
+
+  const [walletQuery, transactionsQuery, teamQuery] = useQueries({
+    queries: [
+      {
+        queryKey: ['user-dashboard', 'wallet'],
+        queryFn: getMyWallet,
+      },
+      {
+        queryKey: ['user-dashboard', 'transactions'],
+        queryFn: getMyTransactions,
+      },
+      {
+        queryKey: ['user-dashboard', 'team'],
+        queryFn: getMyTeam,
+      },
+    ],
+  });
+
+  const loading = walletQuery.isLoading || transactionsQuery.isLoading || teamQuery.isLoading;
+  const queryError = walletQuery.error || transactionsQuery.error || teamQuery.error;
+  const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load dashboard values') : '';
+
+  const walletBalance = Number(walletQuery.data?.data?.balance ?? 0);
+  const rank = walletQuery.data?.data?.rank ?? user?.rank ?? 'Beginner';
+  const teamSize = Number(teamQuery.data?.data?.users?.length ?? 0);
+
+  const monthEarnings = useMemo(() => {
+    const transactions = transactionsQuery.data?.data?.transactions ?? [];
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+
+    return transactions
+      .filter((entry) => {
+        const date = entry.createdAt ? new Date(entry.createdAt) : null;
+        if (!date || Number.isNaN(date.getTime())) return false;
+        return (
+          date.getMonth() === month &&
+          date.getFullYear() === year &&
+          entry.status === 'completed' &&
+          Number(entry.amount ?? 0) > 0
+        );
+      })
+      .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0);
+  }, [transactionsQuery.data]);
 
   const handleCopyReferralId = async () => {
     if (!referralId) return;
@@ -37,6 +85,9 @@ export default function Dashboard() {
         Dashboard
       </h1>
       <p className="mt-1 text-slate-600">Overview of your account and activity.</p>
+      {error && (
+        <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
 
       {/* Referral ID - copyable */}
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -73,10 +124,26 @@ export default function Dashboard() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Wallet balance', value: '₹0', sub: 'Available' },
-          { label: 'This month', value: '—', sub: 'Earnings' },
-          { label: 'Team size', value: '0', sub: 'Direct' },
-          { label: 'Rank', value: 'Beginner', sub: 'Current' },
+          {
+            label: 'Wallet balance',
+            value: loading ? 'Loading...' : `₹${walletBalance.toLocaleString()}`,
+            sub: 'Available',
+          },
+          {
+            label: 'This month',
+            value: loading ? 'Loading...' : `₹${monthEarnings.toLocaleString()}`,
+            sub: 'Earnings',
+          },
+          {
+            label: 'Team size',
+            value: loading ? 'Loading...' : String(teamSize),
+            sub: 'Direct',
+          },
+          {
+            label: 'Rank',
+            value: loading ? 'Loading...' : rank,
+            sub: 'Current',
+          },
         ].map(({ label, value, sub }) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm font-medium text-slate-500">{label}</p>
