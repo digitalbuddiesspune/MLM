@@ -40,13 +40,13 @@ export default function Home() {
     <>
       {/* Hero: full-bleed background image with transparent navbar and content overlay */}
       <section
-        className="relative min-h-screen flex flex-col bg-cover bg-center bg-no-repeat"
+        className="relative flex flex-col bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200)',
+          backgroundImage: 'url(https://res.cloudinary.com/dsafvwkrf/image/upload/v1777555905/Untitled_1920_x_900_px_u6cbci.png)',
         }}
       >
         {/* Dark overlay for text readability */}
-        <div className="absolute inset-0 bg-slate-900/50" aria-hidden />
+        <div className="absolute inset-0 bg-slate-700/50" aria-hidden />
 
         {/* Transparent navbar inside hero so image shows behind it */}
         <div className="relative z-20">

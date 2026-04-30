@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getAdminUsers } from '../../api/admin.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteUser, getAdminUsers } from '../../api/admin.js';
 
 export default function AdminUsers() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [actionMessage, setActionMessage] = useState('');
 
   const params = {
     page,
@@ -26,6 +29,19 @@ export default function AdminUsers() {
   const users = data?.data?.users ?? [];
   const pagination = data?.data?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 0 };
 
+  const deleteMutation = useMutation({
+    mutationFn: (id) => deleteUser(id),
+    onSuccess: async () => {
+      setActionMessage('User deleted successfully.');
+      setDeleteTarget(null);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+    onError: (e) => {
+      setActionMessage(e?.response?.data?.error ?? 'Failed to delete user');
+      setDeleteTarget(null);
+    },
+  });
+
   const handleSearch = (e) => {
     e.preventDefault();
     setSearch(searchInput);
@@ -36,6 +52,9 @@ export default function AdminUsers() {
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Users</h1>
       <p className="mt-1 text-slate-600">Manage registered users.</p>
+      {actionMessage && (
+        <p className="mt-3 text-sm text-slate-600">{actionMessage}</p>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-4">
         <form onSubmit={handleSearch} className="flex gap-2">
@@ -82,16 +101,17 @@ export default function AdminUsers() {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">KYC</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Rank</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Joined</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-sm">Loading…</td>
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500 text-sm">Loading…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-sm">No users found.</td>
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500 text-sm">No users found.</td>
               </tr>
             ) : (
               users.map((u) => (
@@ -122,6 +142,15 @@ export default function AdminUsers() {
                   <td className="px-4 py-3 text-sm text-slate-600">{u.rank ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-slate-500">
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(u)}
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))
@@ -154,6 +183,34 @@ export default function AdminUsers() {
           </div>
         )}
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">Confirm delete</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Are you sure you want to delete <span className="font-semibold text-slate-900">{deleteTarget.name}</span>? This action will remove user data from database.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate(deleteTarget._id)}
+                disabled={deleteMutation.isPending}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

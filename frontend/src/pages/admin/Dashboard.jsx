@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [copied, setCopied] = useState(false);
   const user = getStoredUser();
   const referralId = user?._id ?? '';
+  const referralIdShort = referralId ? referralId.slice(-6) : '';
 
   const [statsQuery, usersQuery, adminsQuery] = useQueries({
     queries: [
@@ -97,7 +98,7 @@ export default function AdminDashboard() {
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-500">Referral ID</p>
-          <p className="mt-1 truncate font-mono text-sm font-semibold text-slate-900">{referralId || '—'}</p>
+          <p className="mt-1 truncate font-mono text-sm font-semibold text-slate-900">{referralIdShort || '—'}</p>
           <p className="mt-0.5 text-xs text-slate-500">Share this ID when inviting others to register under you</p>
         </div>
         <button

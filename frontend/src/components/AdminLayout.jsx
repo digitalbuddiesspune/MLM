@@ -149,7 +149,7 @@ export default function AdminLayout() {
             </svg>
           </button>
         </div>
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-2 pb-4 lg:px-2">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-2">
           <Link
             to="/admin/dashboard"
             title={!sidebarOpen ? 'Dashboard' : undefined}

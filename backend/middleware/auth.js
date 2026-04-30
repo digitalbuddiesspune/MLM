@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET ?? 'change-me-in-production';
 /**
  * Verifies JWT and attaches req.userId. Calls next() on success.
  */
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) {
@@ -15,6 +15,10 @@ export function requireAuth(req, res, next) {
   }
   try {
     const { userId } = jwt.verify(token, JWT_SECRET);
+    const userExists = await User.exists({ _id: userId });
+    if (!userExists) {
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
     req.userId = userId;
     next();
   } catch {
@@ -26,13 +30,16 @@ export function requireAuth(req, res, next) {
  * Attaches req.userId if a valid bearer token is present.
  * Guest requests are allowed to pass through.
  */
-export function attachOptionalAuth(req, res, next) {
+export async function attachOptionalAuth(req, res, next) {
   const auth = req.headers.authorization;
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return next();
   try {
     const { userId } = jwt.verify(token, JWT_SECRET);
-    req.userId = userId;
+    const userExists = await User.exists({ _id: userId });
+    if (userExists) {
+      req.userId = userId;
+    }
   } catch {
     // Ignore invalid token for guest-access endpoints.
   }

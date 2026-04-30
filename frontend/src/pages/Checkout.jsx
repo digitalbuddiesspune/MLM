@@ -15,6 +15,7 @@ export default function Checkout() {
   const [paymentMessage, setPaymentMessage] = useState('');
   const [addressMessage, setAddressMessage] = useState('');
   const [isFetchingPincodeDetails, setIsFetchingPincodeDetails] = useState(false);
+  const [lastFetchedPincode, setLastFetchedPincode] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState({
@@ -144,18 +145,10 @@ export default function Checkout() {
     }
   };
 
-  const handleAddressInput = (event) => {
-    const { name, value } = event.target;
-    setAddressForm((prev) => ({
-      ...prev,
-      [name]: value,
-      ...(name === 'pincode' ? { state: '', district: '', tehsil: '' } : {}),
-    }));
-  };
-
-  const handlePincodeBlur = async () => {
-    const pincode = addressForm.pincode?.trim();
+  const fetchPincodeDetails = async (rawPincode) => {
+    const pincode = String(rawPincode ?? '').trim();
     if (!/^\d{6}$/.test(pincode)) return;
+    if (pincode === lastFetchedPincode) return;
     setIsFetchingPincodeDetails(true);
     try {
       const res = await detectAddressStateByPincode(pincode);
@@ -163,11 +156,37 @@ export default function Checkout() {
       const district = res?.data?.district ?? '';
       const tehsil = res?.data?.tehsil ?? '';
       setAddressForm((prev) => ({ ...prev, state, district, tehsil }));
+      setLastFetchedPincode(pincode);
     } catch {
       setAddressForm((prev) => ({ ...prev, state: '', district: '', tehsil: '' }));
+      setLastFetchedPincode('');
     } finally {
       setIsFetchingPincodeDetails(false);
     }
+  };
+
+  const handleAddressInput = (event) => {
+    const { name, value } = event.target;
+    if (name === 'pincode') {
+      const cleanedPincode = value.replace(/\D/g, '').slice(0, 6);
+      setAddressForm((prev) => ({
+        ...prev,
+        pincode: cleanedPincode,
+        state: '',
+        district: '',
+        tehsil: '',
+      }));
+      setLastFetchedPincode('');
+      if (cleanedPincode.length === 6) {
+        void fetchPincodeDetails(cleanedPincode);
+      }
+      return;
+    }
+
+    setAddressForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleAddAddress = (event) => {
@@ -256,38 +275,46 @@ export default function Checkout() {
               )}
 
               {shouldShowAddressForm && (
-                <form onSubmit={handleAddAddress} className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <input name="fullName" value={addressForm.fullName} onChange={handleAddressInput} placeholder="Full Name" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
-                  <input name="phone" value={addressForm.phone} onChange={handleAddressInput} placeholder="Phone" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
-                  <input name="pincode" value={addressForm.pincode} onChange={handleAddressInput} onBlur={handlePincodeBlur} placeholder="Pincode" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
-                  <input name="district" value={addressForm.district} readOnly placeholder="District (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
-                  <input name="tehsil" value={addressForm.tehsil} readOnly placeholder="Tehsil (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
-                  <input name="state" value={addressForm.state} readOnly placeholder="State (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
+                <div className="relative mt-4">
+                  <form
+                    onSubmit={handleAddAddress}
+                    className={`grid gap-2 sm:grid-cols-2 ${isFetchingPincodeDetails ? 'pointer-events-none select-none blur-[1px]' : ''}`}
+                  >
+                    <input name="fullName" value={addressForm.fullName} onChange={handleAddressInput} placeholder="Full Name" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
+                    <input name="phone" value={addressForm.phone} onChange={handleAddressInput} placeholder="Phone" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
+                    <input name="pincode" value={addressForm.pincode} onChange={handleAddressInput} placeholder="Pincode" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
+                    <input name="district" value={addressForm.district} readOnly placeholder="District (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
+                    <input name="tehsil" value={addressForm.tehsil} readOnly placeholder="Tehsil (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
+                    <input name="state" value={addressForm.state} readOnly placeholder="State (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
+                    <div className="sm:col-span-2 flex flex-wrap gap-1.5">
+                      <button
+                        type="submit"
+                        disabled={addAddressMutation.isPending}
+                        className="rounded-lg border border-slate-400 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        {addAddressMutation.isPending ? 'Saving Address...' : 'Save Address'}
+                      </button>
+                      {addresses.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddressForm(false)}
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
                   {isFetchingPincodeDetails && (
-                    <div className="sm:col-span-2 flex items-center gap-2 text-xs text-slate-500">
-                      <span className="h-3 w-3 animate-spin rounded-full border border-slate-400 border-t-transparent" />
-                      Fetching details...
+                    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
+                      <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+                        <span className="h-3 w-3 animate-spin rounded-full border border-slate-400 border-t-transparent" />
+                        Fetching details...
+                      </div>
                     </div>
                   )}
-                  <div className="sm:col-span-2 flex flex-wrap gap-1.5">
-                    <button
-                      type="submit"
-                      disabled={addAddressMutation.isPending}
-                      className="rounded-lg border border-slate-400 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-                    >
-                      {addAddressMutation.isPending ? 'Saving Address...' : 'Save Address'}
-                    </button>
-                    {addresses.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddressForm(false)}
-                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </form>
+                </div>
               )}
               {addressMessage && <p className="mt-2 text-xs text-slate-600">{addressMessage}</p>}
             </div>
