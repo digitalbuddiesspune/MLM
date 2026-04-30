@@ -3,11 +3,20 @@ import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
+import Cart from '../models/Cart.js';
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from '../config/razorpay.js';
 import { addIncome } from '../services/walletService.js';
 
 // Credit 5% on each eligible child order; left + right totals 10%.
 const BINARY_PAIR_BONUS_PERCENT = 5;
+
+async function removePurchasedProductFromCart(userId, productId) {
+  if (!userId || !productId) return;
+  await Cart.updateOne(
+    { userId },
+    { $pull: { items: { productId } } }
+  );
+}
 
 async function creditBinaryPairBonusIfEligible(order) {
   if (!order || order.binaryPairBonusCreditedAt) return false;
@@ -111,6 +120,7 @@ export async function verifyOrderPayment(req, res, next) {
       if (changed) {
         await order.save();
       }
+      await removePurchasedProductFromCart(order.userId, order.productId);
       return res.json({ success: true, data: { order } });
     }
 
@@ -136,6 +146,7 @@ export async function verifyOrderPayment(req, res, next) {
     await creditBinaryPairBonusIfEligible(order);
 
     await order.save();
+    await removePurchasedProductFromCart(order.userId, order.productId);
 
     res.json({ success: true, data: { order } });
   } catch (error) {

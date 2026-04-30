@@ -29,3 +29,18 @@ export async function createWithdrawalRequest(payload) {
   const { data } = await api.post('/user/withdrawal-request', payload);
   return data;
 }
+
+export async function getMyAddresses() {
+  const { data } = await api.get('/user/addresses');
+  return data;
+}
+
+export async function createMyAddress(payload) {
+  const { data } = await api.post('/user/addresses', payload);
+  return data;
+}
+
+export async function detectAddressStateByPincode(pincode) {
+  const { data } = await api.get('/user/addresses/detect-state', { params: { pincode } });
+  return data;
+}

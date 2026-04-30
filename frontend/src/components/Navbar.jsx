@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { isAuthenticated, getStoredUser, getDashboardPathForRole } from '../api/auth.js';
+import { getCart } from '../api/cart.js';
 
 export default function Navbar({ onOpenLogin, onOpenRegister, transparent = false }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: cartData } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCart,
+  });
+  const cartCount = cartData?.data?.totalItems ?? 0;
 
   const headerClass = transparent
     ? 'sticky top-0 z-50 bg-transparent border-none'
@@ -36,6 +43,22 @@ export default function Navbar({ onOpenLogin, onOpenRegister, transparent = fals
         </Link>
 
         <div className="hidden items-center gap-2 md:flex">
+          <Link
+            to="/cart"
+            className={transparent ? 'relative rounded-lg p-2 text-white hover:bg-white/10' : 'relative rounded-lg p-2 text-slate-700 hover:bg-slate-100'}
+            aria-label="Open cart"
+          >
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l1.5 9h10.5l2-7H7" />
+              <circle cx="10" cy="19" r="1.5" />
+              <circle cx="17" cy="19" r="1.5" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                {cartCount}
+              </span>
+            )}
+          </Link>
           {isAuthenticated() ? (
             <Link
               to={getDashboardPathForRole(getStoredUser()?.role)}
@@ -83,6 +106,13 @@ export default function Navbar({ onOpenLogin, onOpenRegister, transparent = fals
         <div className={`border-t px-4 py-3 md:hidden ${transparent ? 'border-white/20 bg-slate-900/90 backdrop-blur' : 'border-teal-100 bg-white'}`}>
           <ul className="flex flex-col gap-1">
             <li className={`pb-2 ${transparent ? 'border-b border-white/10' : 'border-b border-slate-100'}`}>
+              <Link
+                to="/cart"
+                onClick={() => setMobileOpen(false)}
+                className={transparent ? 'block rounded-lg px-3 py-2 text-sm font-medium text-white hover:bg-white/10' : 'block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'}
+              >
+                Cart ({cartCount})
+              </Link>
               {isAuthenticated() ? (
                 <Link
                   to={getDashboardPathForRole(getStoredUser()?.role)}

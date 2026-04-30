@@ -23,6 +23,23 @@ export function requireAuth(req, res, next) {
 }
 
 /**
+ * Attaches req.userId if a valid bearer token is present.
+ * Guest requests are allowed to pass through.
+ */
+export function attachOptionalAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) return next();
+  try {
+    const { userId } = jwt.verify(token, JWT_SECRET);
+    req.userId = userId;
+  } catch {
+    // Ignore invalid token for guest-access endpoints.
+  }
+  next();
+}
+
+/**
  * Requires auth and role === 'admin'. Attaches req.userId.
  */
 export function requireAdmin(req, res, next) {

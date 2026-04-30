@@ -43,6 +43,7 @@ import KycApprovals from "../pages/admin/KycApprovals";
 import Checkout from "../pages/Checkout";
 import AdminOrders from "../pages/admin/Orders";
 import AdminUserWallets from "../pages/admin/UserWallets";
+import Cart from "../pages/Cart";
 
 const router = createBrowserRouter(
   createRoutesFromChildren(
@@ -51,6 +52,7 @@ const router = createBrowserRouter(
       <Route path="/about" element={<Navigate to="/#about" replace />} />
       <Route path="/business-plan" element={<BusinessPlan />} />
       <Route path="/products" element={<Navigate to="/#products" replace />} />
+      <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<RequireRole allowedRoles={['user']}><Checkout /></RequireRole>} />
       <Route path="/contact" element={<Navigate to="/#contact" replace />} />
       <Route path="/login" element={<Navigate to="/" state={{ authModal: 'login' }} replace />} />

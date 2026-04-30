@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProducts } from '../api/products.js';
 import { isAuthenticated } from '../api/auth.js';
+import { addToCart } from '../api/cart.js';
 
 export default function BusinessPlan() {
+  const queryClient = useQueryClient();
+  const [addedMessage, setAddedMessage] = useState('');
   const businessHighlights = [
     {
       no: '01',
@@ -45,6 +49,14 @@ export default function BusinessPlan() {
     select: (res) => res?.data?.products ?? [],
   });
   const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load products') : '';
+  const addToCartMutation = useMutation({
+    mutationFn: (productId) => addToCart(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      setAddedMessage('Product added to cart');
+      setTimeout(() => setAddedMessage(''), 1400);
+    },
+  });
 
   return (
     <div className="bg-[#dfe3e6]">
@@ -192,6 +204,7 @@ export default function BusinessPlan() {
           <div className="text-center">
             <h2 className="text-3xl font-bold text-[#111827]">Products</h2>
             <p className="mt-2 text-[#2a3442]">Choose a product and get started with Amruta Wellness.</p>
+            {addedMessage && <p className="mt-2 text-sm font-semibold text-teal-700">{addedMessage}</p>}
           </div>
 
           <div className="mt-10">
@@ -230,12 +243,21 @@ export default function BusinessPlan() {
                         Rs {product.price?.toLocaleString() ?? '0'}
                       </span>
                     </div>
-                    <Link
-                      to={isAuthenticated() ? `/checkout?productId=${product._id}` : '/register'}
-                      className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#0b0d10] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1c232b]"
-                    >
-                      I'm Interested
-                    </Link>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <Link
+                        to={isAuthenticated() ? `/checkout?productId=${product._id}` : '/register'}
+                        className="inline-flex items-center justify-center rounded-lg bg-[#0b0d10] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1c232b]"
+                      >
+                        I'm Interested
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => addToCartMutation.mutate(product._id)}
+                        className="inline-flex items-center justify-center rounded-lg border border-[#0b0d10] px-4 py-2 text-sm font-semibold text-[#0b0d10] hover:bg-[#d7dde1]"
+                      >
+                        Add to Cart
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
