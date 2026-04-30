@@ -27,7 +27,7 @@ export default function Renewal() {
     const latest = paidOrders.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
     const activationDate = new Date(latest.paidAt);
     const expiryDate = new Date(activationDate);
-    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    expiryDate.setDate(expiryDate.getDate() + 30);
 
     const isExpired = Date.now() > expiryDate.getTime();
     return {
@@ -35,9 +35,11 @@ export default function Renewal() {
       activePlanProductId: latest.productId ? String(latest.productId) : '',
       activationDate,
       expiryDate,
-      status: isExpired ? 'Expired' : 'Active',
+      status: isExpired ? 'Inactive' : 'Active',
     };
   }, [orders]);
+
+  const canRenewNow = renewalInfo.status === 'Inactive' && Boolean(renewalInfo.activePlanProductId);
 
   return (
     <div>
@@ -75,7 +77,7 @@ export default function Renewal() {
                 <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                   renewalInfo.status === 'Active'
                     ? 'bg-green-100 text-green-700'
-                    : renewalInfo.status === 'Expired'
+                    : renewalInfo.status === 'Inactive'
                       ? 'bg-red-100 text-red-700'
                       : 'bg-slate-100 text-slate-700'
                 }`}>
@@ -86,12 +88,22 @@ export default function Renewal() {
           </dl>
         )}
 
-        <Link
-          to={renewalInfo.activePlanProductId ? `/checkout?productId=${renewalInfo.activePlanProductId}` : '/#products'}
-          className="mt-6 inline-flex rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-        >
-          Renew now
-        </Link>
+        {canRenewNow ? (
+          <Link
+            to={`/checkout?productId=${renewalInfo.activePlanProductId}`}
+            className="mt-6 inline-flex rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+          >
+            Renew now
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="mt-6 inline-flex cursor-not-allowed rounded-lg bg-teal-600/50 px-4 py-2 text-sm font-medium text-white blur-[0.3px] opacity-70"
+          >
+            Renew now
+          </button>
+        )}
       </div>
     </div>
   );

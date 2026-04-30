@@ -128,7 +128,7 @@ export default function Checkout() {
           queryClient.invalidateQueries({ queryKey: ['user', 'renewal-orders'] });
           setPaymentMessage('Payment successful. Your order has been placed.');
           setTimeout(() => {
-            navigate('/user/my-plan');
+            navigate('/user/my-plan?purchase=success');
           }, 700);
         },
       };
