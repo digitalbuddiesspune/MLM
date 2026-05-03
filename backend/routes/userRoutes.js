@@ -3,6 +3,7 @@ import {
   getMyTeam,
   getMyProfile,
   getBinaryTree,
+  swapBinaryChildren,
   getReferralTree,
   getMyWallet,
   getMyTransactions,
@@ -17,6 +18,7 @@ const router = Router();
 router.get('/team', requireAuth, getMyTeam);
 router.get('/profile', requireAuth, getMyProfile);
 router.get('/binary-tree', requireAuth, getBinaryTree);
+router.post('/binary-tree/swap-children', requireAuth, swapBinaryChildren);
 router.get('/referral-tree', requireAuth, getReferralTree);
 router.get('/wallet', requireAuth, getMyWallet);
 router.get('/transactions', requireAuth, getMyTransactions);

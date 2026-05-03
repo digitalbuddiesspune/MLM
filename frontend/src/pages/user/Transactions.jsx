@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getMyTransactions } from '../../api/user.js';
+import { formatBinaryMatchingDetail } from '../../utils/ledgerDisplay.js';
 
 function formatType(type = '') {
   return String(type)
@@ -30,6 +31,7 @@ export default function Transactions() {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Date</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Binary match</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-500">Amount</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Status</th>
             </tr>
@@ -37,13 +39,13 @@ export default function Transactions() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-500 text-sm">
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-sm">
                   Loading transactions...
                 </td>
               </tr>
             ) : transactions.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-500 text-sm">
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-sm">
                   No transactions yet.
                 </td>
               </tr>
@@ -54,6 +56,9 @@ export default function Transactions() {
                     {txn.createdAt ? new Date(txn.createdAt).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{formatType(txn.type)}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold text-teal-800">
+                    {formatBinaryMatchingDetail(txn) ?? '—'}
+                  </td>
                   <td className={`px-4 py-3 text-right text-sm font-semibold ${Number(txn.amount ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {Number(txn.amount ?? 0) >= 0 ? '+' : '-'}₹{Math.abs(Number(txn.amount ?? 0)).toLocaleString()}
                   </td>

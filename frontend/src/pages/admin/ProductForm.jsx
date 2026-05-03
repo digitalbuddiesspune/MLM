@@ -171,6 +171,13 @@ export default function AdminProductForm() {
               placeholder="https://example.com/image.jpg"
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
+            {form.imageUrl ? (
+              <img
+                src={form.imageUrl}
+                alt={form.name || 'Product preview'}
+                className="mt-2 h-24 w-24 rounded-md border border-slate-200 object-cover"
+              />
+            ) : null}
           </div>
 
           <div>

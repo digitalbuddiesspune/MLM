@@ -14,9 +14,17 @@ const LEDGER_TYPES = ['binary', 'generation', 'royalty', 'withdrawal', 'joining_
  * @param {'binary' | 'generation' | 'royalty' | 'withdrawal' | 'joining_bonus'} type
  * @param {import('mongoose').Types.ObjectId} [referenceId]
  * @param {import('mongoose').ClientSession} [session] - Optional; when provided, caller owns transaction
+ * @param {Record<string, unknown> | null} [metadata]
  * @returns {Promise<{ wallet: Object, ledger: Object }>}
  */
-export async function addIncome(userId, amount, type, referenceId = null, session = null) {
+export async function addIncome(
+  userId,
+  amount,
+  type,
+  referenceId = null,
+  session = null,
+  metadata = null
+) {
   if (!userId || !mongoose.isValidObjectId(userId)) {
     const err = new Error('Valid userId is required');
     err.statusCode = 400;
@@ -46,18 +54,32 @@ export async function addIncome(userId, amount, type, referenceId = null, sessio
       [wallet] = await Wallet.create([{ userId, balance: 0 }], { session: activeSession });
     }
 
-    const [ledgerEntry] = await Ledger.create(
-      [
-        {
-          userId,
-          type,
-          amount,
-          referenceId,
-          status: 'completed',
-        },
-      ],
-      { session: activeSession }
-    );
+    /** Extra copy for downstream reports when referenceId column is absent on older docs. */
+    let mergedMeta = null;
+    if (metadata != null && typeof metadata === 'object' && !Array.isArray(metadata)) {
+      mergedMeta = { ...metadata };
+    }
+    if (referenceId != null) {
+      try {
+        const sid = String(new mongoose.Types.ObjectId(referenceId));
+        mergedMeta = { ...(mergedMeta || {}), creditSourceUserId: sid };
+      } catch {
+        /* invalid ref id — omit metadata copy */
+      }
+    }
+
+    const ledgerDoc = {
+      userId,
+      type,
+      amount,
+      referenceId,
+      status: 'completed',
+    };
+    if (mergedMeta && Object.keys(mergedMeta).length > 0) {
+      ledgerDoc.metadata = mergedMeta;
+    }
+
+    const [ledgerEntry] = await Ledger.create([ledgerDoc], { session: activeSession });
 
     wallet = await Wallet.findOneAndUpdate(
       { userId },

@@ -5,8 +5,16 @@ export async function getMyTeam() {
   return data;
 }
 
-export async function getBinaryTree(maxDepth = 6) {
-  const { data } = await api.get('/user/binary-tree', { params: { maxDepth } });
+/**
+ * @param {{ maxDepth?: number | 'all' }} [opts]
+ * Pass a numeric maxDepth (1–50) to limit server traversal; `'all'` or omit for full subtree.
+ */
+export async function getBinaryTree(opts = {}) {
+  const params = {};
+  if (opts?.maxDepth != null && opts.maxDepth !== 'all') {
+    params.maxDepth = opts.maxDepth;
+  }
+  const { data } = await api.get('/user/binary-tree', { params });
   return data;
 }
 

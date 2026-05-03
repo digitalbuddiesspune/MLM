@@ -1,6 +1,37 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getMyTransactions } from '../../api/user.js';
+import { formatBinaryMatchingDetail } from '../../utils/ledgerDisplay.js';
+
+function formatSourceMemberCell(row) {
+  const sm = row.sourceMember;
+  if (!sm) {
+    return <span className="text-slate-400">—</span>;
+  }
+
+  const bv = formatBinaryMatchingDetail(row);
+  const isProblem =
+    sm.linkKind === 'no_ref_stored' || sm.linkKind === 'unresolved_ref';
+
+  return (
+    <div>
+      <div className="font-medium text-slate-800">{sm.name}</div>
+      {sm.referralNumber != null && !isProblem && (
+        <div className="text-xs text-slate-500">Ref. #{sm.referralNumber}</div>
+      )}
+      {sm.refIdTail && (
+        <div className="text-xs text-slate-500">Link …{sm.refIdTail}</div>
+      )}
+      {sm.linkKind === 'order_buyer' && (
+        <div className="mt-0.5 text-xs text-amber-700">Via product order</div>
+      )}
+      {isProblem && sm.detail && (
+        <div className="mt-0.5 text-xs text-slate-500">{sm.detail}</div>
+      )}
+      {bv && <div className="mt-1 text-xs text-slate-500">BV match: {bv}</div>}
+    </div>
+  );
+}
 
 export default function IncomeReport() {
   const { data, isLoading: loading, error: queryError } = useQuery({
@@ -71,18 +102,21 @@ export default function IncomeReport() {
           <thead className="bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Source</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Income type</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">
+                Linked member / sponsor line
+              </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-500">Amount</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-500">Loading income report...</td>
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500">Loading income report...</td>
               </tr>
             ) : allRows.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-500">No income entries found.</td>
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500">No income entries found.</td>
               </tr>
             ) : (
               allRows.map((row) => (
@@ -91,6 +125,7 @@ export default function IncomeReport() {
                     {row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{row.source}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700">{formatSourceMemberCell(row)}</td>
                   <td className="px-4 py-3 text-right text-sm font-semibold text-emerald-700">
                     +₹{Number(row.amount ?? 0).toLocaleString()}
                   </td>

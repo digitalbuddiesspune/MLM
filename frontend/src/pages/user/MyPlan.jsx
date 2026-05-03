@@ -1,14 +1,13 @@
 import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMyOrders } from '../../api/orders.js';
 import { getProducts } from '../../api/products.js';
 import { createOrder, verifyOrderPayment } from '../../api/orders.js';
 import { getStoredUser } from '../../api/auth.js';
-import { getMyAddresses } from '../../api/user.js';
-
 export default function MyPlan() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const purchaseSuccess = searchParams.get('purchase') === 'success';
   const user = getStoredUser();
@@ -22,16 +21,9 @@ export default function MyPlan() {
     queryFn: getProducts,
     select: (res) => res?.data?.products ?? [],
   });
-  const { data: addressesData } = useQuery({
-    queryKey: ['user', 'addresses'],
-    queryFn: getMyAddresses,
-  });
-
   const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load your plan') : '';
   const orders = data?.data?.orders ?? [];
   const products = productsData ?? [];
-  const addresses = addressesData?.data?.addresses ?? [];
-  const hasAddress = addresses.length > 0;
 
   const paidOrders = useMemo(
     () => orders.filter((order) => order.status === 'paid'),
@@ -52,10 +44,6 @@ export default function MyPlan() {
 
   const handleBuyPlanDirect = async (product) => {
     if (!product?._id) return;
-    if (!hasAddress) {
-      window.alert('Please add address first in checkout page.');
-      return;
-    }
     try {
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error('Failed to load Razorpay SDK');
@@ -82,16 +70,21 @@ export default function MyPlan() {
         },
         theme: { color: '#0f766e' },
         handler: async (response) => {
-          await verifyOrderPayment({
-            orderId: backendOrder._id,
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-          });
-          queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
-          queryClient.invalidateQueries({ queryKey: ['user', 'renewal-orders'] });
-          queryClient.invalidateQueries({ queryKey: ['cart'] });
-          window.alert('Product purchased successfully.');
+          try {
+            await verifyOrderPayment({
+              orderId: backendOrder._id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
+            queryClient.invalidateQueries({ queryKey: ['user', 'renewal-orders'] });
+            queryClient.invalidateQueries({ queryKey: ['cart'] });
+            queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
+            navigate('/user/my-plan?purchase=success', { replace: true });
+          } catch (err) {
+            window.alert(err?.response?.data?.error ?? err?.message ?? 'Could not verify payment');
+          }
         },
       };
 
@@ -162,8 +155,11 @@ export default function MyPlan() {
       )}
 
       <div className="mt-10">
-        <h2 className="text-xl font-bold text-slate-900">Order More Plans</h2>
-        <p className="mt-1 text-sm text-slate-600">Choose any active product and click Buy Plan.</p>
+        <h2 className="text-xl font-bold text-slate-900">Buy a plan</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Pay here with Razorpay — no address required. Optionally use{' '}
+          <strong>Checkout with address</strong> below if you need delivery details saved.
+        </p>
 
         {loadingProducts ? (
           <div className="mt-4 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
@@ -185,16 +181,24 @@ export default function MyPlan() {
                   )}
                 </div>
                 <h3 className="mt-3 text-base font-semibold text-slate-900">{product.name}</h3>
-                <p className="mt-1 text-sm text-slate-700">
+                <p className="mt-1 flex-1 text-sm text-slate-700">
                   Amount: <span className="font-medium">Rs {Number(product.price ?? 0).toLocaleString()}</span>
                 </p>
-                <button
-                  type="button"
-                  onClick={() => handleBuyPlanDirect(product)}
-                  className="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-                >
-                  Buy Plan
-                </button>
+                <div className="mt-4 flex w-full flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleBuyPlanDirect(product)}
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                  >
+                    Buy plan (pay now)
+                  </button>
+                  <Link
+                    to={`/checkout?productId=${product._id}`}
+                    className="inline-flex w-full items-center justify-center rounded-lg border border-teal-600 bg-white px-4 py-2 text-sm font-medium text-teal-800 hover:bg-teal-50"
+                  >
+                    Checkout with address
+                  </Link>
+                </div>
               </article>
             ))}
           </div>

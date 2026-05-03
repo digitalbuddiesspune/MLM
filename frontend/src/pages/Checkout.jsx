@@ -21,6 +21,7 @@ export default function Checkout() {
   const [addressForm, setAddressForm] = useState({
     fullName: '',
     phone: '',
+    streetAddress: '',
     pincode: '',
     district: '',
     tehsil: '',
@@ -52,8 +53,7 @@ export default function Checkout() {
   const addresses = addressesData?.data?.addresses ?? [];
   const shouldShowAddressForm = addresses.length === 0 || showAddressForm;
   const selectedAddress = addresses.find((item) => item._id === selectedAddressId) ?? addresses[0] ?? null;
-  const deliveryCharge = selectedAddress ? (selectedAddress.state?.toLowerCase() === 'maharashtra' ? 120 : 150) : null;
-  const totalAmount = Number(product?.price ?? 0) + Number(deliveryCharge ?? 0);
+  const totalAmount = Number(product?.price ?? 0);
 
   const addAddressMutation = useMutation({
     mutationFn: createMyAddress,
@@ -63,7 +63,15 @@ export default function Checkout() {
       setSelectedAddressId(createdId);
       setShowAddressForm(false);
       setAddressMessage('Address added successfully.');
-      setAddressForm({ fullName: '', phone: '', pincode: '', district: '', tehsil: '', state: '' });
+      setAddressForm({
+        fullName: '',
+        phone: '',
+        streetAddress: '',
+        pincode: '',
+        district: '',
+        tehsil: '',
+        state: '',
+      });
     },
     onError: (e) => {
       setAddressMessage(e?.response?.data?.error ?? 'Failed to add address');
@@ -126,6 +134,7 @@ export default function Checkout() {
           queryClient.invalidateQueries({ queryKey: ['cart'] });
           queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
           queryClient.invalidateQueries({ queryKey: ['user', 'renewal-orders'] });
+          queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
           setPaymentMessage('Payment successful. Your order has been placed.');
           setTimeout(() => {
             navigate('/user/my-plan?purchase=success');
@@ -195,6 +204,7 @@ export default function Checkout() {
     addAddressMutation.mutate({
       fullName: addressForm.fullName,
       phone: addressForm.phone,
+      streetAddress: addressForm.streetAddress,
       pincode: addressForm.pincode,
     });
   };
@@ -252,7 +262,10 @@ export default function Checkout() {
                       />
                       <div className="text-xs text-slate-700">
                         <p className="font-semibold text-slate-900">{address.fullName} ({address.phone})</p>
-                        <p>{address.tehsil}, {address.district} - {address.pincode}</p>
+                        {address.streetAddress ? (
+                          <p className="mt-0.5 text-slate-800">{address.streetAddress}</p>
+                        ) : null}
+                        <p className="mt-0.5">{address.tehsil}, {address.district} — {address.pincode}</p>
                         <p>{address.state}</p>
                       </div>
                     </label>
@@ -282,6 +295,20 @@ export default function Checkout() {
                   >
                     <input name="fullName" value={addressForm.fullName} onChange={handleAddressInput} placeholder="Full Name" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
                     <input name="phone" value={addressForm.phone} onChange={handleAddressInput} placeholder="Phone" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
+                    <label className="sm:col-span-2 block text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Street address
+                      <textarea
+                        name="streetAddress"
+                        value={addressForm.streetAddress}
+                        onChange={handleAddressInput}
+                        placeholder="House no., building, road, area"
+                        rows={2}
+                        required
+                        minLength={5}
+                        maxLength={500}
+                        className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
+                      />
+                    </label>
                     <input name="pincode" value={addressForm.pincode} onChange={handleAddressInput} placeholder="Pincode" className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs" required />
                     <input name="district" value={addressForm.district} readOnly placeholder="District (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
                     <input name="tehsil" value={addressForm.tehsil} readOnly placeholder="Tehsil (auto from pincode)" className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs text-slate-700" />
@@ -341,19 +368,17 @@ export default function Checkout() {
                 <span className="text-slate-600">Subtotal</span>
                 <span className="font-semibold text-slate-900">Rs {Number(product.price ?? 0).toLocaleString()}</span>
               </div>
-              {selectedAddress && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Delivery Charges</span>
-                  <span className="font-semibold text-slate-900">Rs {Number(deliveryCharge ?? 0).toLocaleString()}</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600">Shipping</span>
+                <span className="font-semibold text-green-700">FREE</span>
+              </div>
             </div>
 
             <div className="mt-3 border-t border-slate-200 pt-3">
               <div className="flex items-center justify-between">
                 <span className="text-base font-semibold text-slate-900">Total</span>
                 <span className="text-base font-bold text-slate-900">
-                  Rs {Number(selectedAddress ? totalAmount : Number(product.price ?? 0)).toLocaleString()}
+                  Rs {Number(totalAmount).toLocaleString()}
                 </span>
               </div>
             </div>

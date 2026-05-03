@@ -42,6 +42,12 @@ export default function Profile() {
               <dd className="mt-1 text-sm text-slate-900">{user?.mobile ?? '—'}</dd>
             </div>
             <div>
+              <dt className="text-xs font-medium uppercase text-slate-500">Referral code</dt>
+              <dd className="mt-1 font-mono text-sm font-semibold text-slate-900">
+                {user?.referralNumber != null ? String(user.referralNumber) : '—'}
+              </dd>
+            </div>
+            <div>
               <dt className="text-xs font-medium uppercase text-slate-500">Role</dt>
               <dd className="mt-1 text-sm text-slate-900">{user?.role ?? '—'}</dd>
             </div>
@@ -92,7 +98,9 @@ export default function Profile() {
             <div className="sm:col-span-2 lg:col-span-3">
               <dt className="text-xs font-medium uppercase text-slate-500">Sponsor</dt>
               <dd className="mt-1 text-sm text-slate-900">
-                {sponsor ? `${sponsor.name ?? '—'} (${sponsor.email ?? '—'})` : '—'}
+                {sponsor
+                  ? `${sponsor.name ?? '—'} (${sponsor.email ?? '—'})${sponsor.referralNumber != null ? ` · code ${sponsor.referralNumber}` : ''}`
+                  : '—'}
               </dd>
             </div>
             <div className="sm:col-span-2 lg:col-span-3">

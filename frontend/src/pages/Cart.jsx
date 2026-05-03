@@ -28,7 +28,6 @@ export default function Cart() {
   });
 
   const items = data?.data?.items ?? [];
-  const deliveryCharge = 120;
   const subtotal = useMemo(
     () =>
       items.reduce((sum, item) => {
@@ -38,7 +37,7 @@ export default function Cart() {
       }, 0),
     [items, quantities]
   );
-  const totalAmount = useMemo(() => subtotal + (items.length > 0 ? deliveryCharge : 0), [subtotal, deliveryCharge, items.length]);
+  const totalAmount = useMemo(() => subtotal, [subtotal]);
   const errorMessage = error?.response?.data?.error ?? 'Failed to load cart';
   const canProceed = items.length > 0;
 
@@ -147,11 +146,9 @@ export default function Cart() {
                 <span className="font-semibold text-slate-900">Rs {subtotal.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-600 font-medium">Delivery Charges</span>
-                <span className="font-semibold text-slate-900">Rs {deliveryCharge.toLocaleString()}</span>
+                <span className="text-slate-600 font-medium">Shipping</span>
+                <span className="font-semibold text-green-700">FREE</span>
               </div>
-              <p className="text-xs text-slate-500 font-medium">In Maharashtra: Rs 120</p>
-              <p className="text-xs text-slate-500 font-medium">Out of Maharashtra: Rs 150</p>
             </div>
 
             <div className="mt-4 border-t border-slate-200 pt-4">

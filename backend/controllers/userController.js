@@ -1,10 +1,16 @@
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Order from '../models/Order.js';
 import Ledger from '../models/Ledger.js';
 import Wallet from '../models/Wallet.js';
 import Kyc from '../models/Kyc.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
-import { getBinaryTree as getBinaryTreeData, getReferralTree as getReferralTreeData } from '../services/treeService.js';
+import {
+  getBinaryTree as getBinaryTreeData,
+  getReferralTree as getReferralTreeData,
+  swapBinaryChildrenAt,
+} from '../services/treeService.js';
+import { ensureReferralNumber } from '../services/referralNumberService.js';
 
 /**
  * GET /api/user/team
@@ -35,11 +41,13 @@ export async function getMyTeam(req, res, next) {
 export async function getMyProfile(req, res, next) {
   try {
     const userId = req.userId;
+    await ensureReferralNumber(userId);
+
     const user = await User.findById(userId)
       .select(
-        'name email mobile role sponsorId parentId position isActive kycStatus isApproved activationDate renewalDate walletBalance rank level sponsoredUsersCount levelReward joiningBonusAmount createdAt'
+        'name email mobile role sponsorId parentId position isActive kycStatus isApproved activationDate renewalDate walletBalance rank level sponsoredUsersCount levelReward joiningBonusAmount referralNumber createdAt'
       )
-      .populate('sponsorId', 'name email mobile')
+      .populate('sponsorId', 'name email mobile referralNumber')
       .populate('parentId', 'name email mobile')
       .lean();
 
@@ -60,18 +68,56 @@ export async function getMyProfile(req, res, next) {
 
 /**
  * GET /api/user/binary-tree
- * Returns binary tree structure rooted at the logged-in user (left/right placement).
- * Query: maxDepth (optional, default 6).
+ * Query: maxDepth optional (1–50). Omit, 0 or "all" = full subtree (use carefully for huge trees).
  * Requires auth.
  */
 export async function getBinaryTree(req, res, next) {
   try {
     const userId = req.userId;
-    const maxDepth = Math.min(Math.max(parseInt(req.query.maxDepth, 10) || 6, 1), 10);
+    const raw = req.query.maxDepth;
+    let maxDepth = null;
+
+    if (raw !== undefined && raw !== '') {
+      const s = String(raw).trim().toLowerCase();
+      if (s !== 'all' && s !== 'full' && Number(raw) !== 0) {
+        const n = parseInt(raw, 10);
+        if (!Number.isNaN(n) && n >= 1) {
+          maxDepth = Math.min(Math.max(n, 1), 50);
+        }
+      }
+    }
+
     const tree = await getBinaryTreeData(userId, maxDepth);
     res.json({
       success: true,
       data: { tree },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /api/user/binary-tree/swap-children
+ * Body: { parentId? } — swap that member's left/right legs (default: yourself).
+ * Allowed only if parent is you or under your placement tree (parentId chain to you).
+ */
+export async function swapBinaryChildren(req, res, next) {
+  try {
+    const raw = req.body?.parentId;
+    const parentId =
+      raw != null && String(raw).trim() !== '' ? String(raw).trim() : req.userId;
+
+    if (!mongoose.isValidObjectId(parentId)) {
+      const err = new Error('Invalid parent id');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    await swapBinaryChildrenAt(req.userId, parentId);
+    res.json({
+      success: true,
+      data: { swapped: true, parentId },
     });
   } catch (error) {
     next(error);
@@ -106,14 +152,18 @@ export async function getReferralTree(req, res, next) {
 export async function getMyWallet(req, res, next) {
   try {
     const userId = req.userId;
+    await ensureReferralNumber(userId);
+
     const user = await User.findById(userId)
-      .select('walletBalance rank')
+      .select('walletBalance rank referralNumber')
       .lean();
+
     res.json({
       success: true,
       data: {
         balance: user?.walletBalance ?? 0,
         rank: user?.rank ?? 'Beginner',
+        referralNumber: user?.referralNumber ?? null,
       },
     });
   } catch (error) {
@@ -122,8 +172,170 @@ export async function getMyWallet(req, res, next) {
 }
 
 /**
+ * Turns various BSON/JSON shapes into a 24-char hex id, or null.
+ */
+function ledgerCreditRefHex(raw) {
+  if (raw == null || raw === '') return null;
+  let v = raw;
+  if (typeof v === 'object' && v !== null && typeof v.$oid === 'string') {
+    v = v.$oid;
+  }
+  try {
+    return new mongoose.Types.ObjectId(v).toString();
+  } catch {
+    return null;
+  }
+}
+
+/** Reference on the document or duplicate path in metadata (legacy / safety). */
+function effectiveCreditRefHex(t) {
+  return (
+    ledgerCreditRefHex(t.referenceId) ??
+    ledgerCreditRefHex(t.metadata?.creditSourceUserId) ??
+    ledgerCreditRefHex(t.metadata?.creditSourceId)
+  );
+}
+
+/**
+ * Resolves ledger referenceId to the member whose activity/order triggered the credit (batch).
+ */
+async function attachSourceMembersToLedgers(transactions) {
+  const refIdStrs = [...new Set(transactions.map((t) => effectiveCreditRefHex(t)).filter(Boolean))];
+
+  if (refIdStrs.length === 0) {
+    return transactions.map((t) => {
+      if (t.type === 'withdrawal') {
+        return { ...t, sourceMember: null };
+      }
+      const noRef = !effectiveCreditRefHex(t);
+      if (noRef && Number(t.amount) > 0) {
+        return {
+          ...t,
+          sourceMember: {
+            name: 'Not linked (older payout)',
+            linkKind: 'no_ref_stored',
+            detail: 'This entry has no stored member id. New income will show the linked member.',
+          },
+        };
+      }
+      return { ...t, sourceMember: null };
+    });
+  }
+
+  const refOids = refIdStrs.map((id) => new mongoose.Types.ObjectId(id));
+
+  /** @type {Record<string, { name: string, email?: string, mobile?: string, referralNumber?: number }>} */
+  const usersById = {};
+
+  const directUsers = await User.find({ _id: { $in: refOids } })
+    .select('name email mobile referralNumber')
+    .lean();
+
+  for (const u of directUsers) {
+    usersById[String(u._id)] = {
+      name: u.name ?? '—',
+      email: u.email,
+      mobile: u.mobile,
+      referralNumber: u.referralNumber ?? undefined,
+    };
+  }
+
+  const unresolvedRefStrs = refIdStrs.filter((id) => !usersById[id]);
+  const unresolvedOids = unresolvedRefStrs.map((id) => new mongoose.Types.ObjectId(id));
+
+  /** @type {Record<string, string>} */
+  const orderIdToBuyerUserId = {};
+
+  if (unresolvedOids.length > 0) {
+    const orders = await Order.find({ _id: { $in: unresolvedOids } }).select('userId').lean();
+    const buyerIds = new Set();
+
+    for (const o of orders) {
+      if (o.userId) {
+        orderIdToBuyerUserId[String(o._id)] = String(o.userId);
+        buyerIds.add(String(o.userId));
+      }
+    }
+
+    const buyerOids = [...buyerIds]
+      .filter((id) => mongoose.isValidObjectId(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    if (buyerOids.length > 0) {
+      const buyers = await User.find({ _id: { $in: buyerOids } })
+        .select('name email mobile referralNumber')
+        .lean();
+
+      for (const u of buyers) {
+        usersById[String(u._id)] = {
+          name: u.name ?? '—',
+          email: u.email,
+          mobile: u.mobile,
+          referralNumber: u.referralNumber ?? undefined,
+        };
+      }
+    }
+  }
+
+  return transactions.map((t) => {
+    if (t.type === 'withdrawal') {
+      return { ...t, sourceMember: null };
+    }
+
+    const rid = effectiveCreditRefHex(t);
+    if (!rid) {
+      if (Number(t.amount) > 0) {
+        return {
+          ...t,
+          sourceMember: {
+            name: 'Not linked (older payout)',
+            linkKind: 'no_ref_stored',
+            detail: 'This entry has no stored member id. New income will show the linked member.',
+          },
+        };
+      }
+      return { ...t, sourceMember: null };
+    }
+
+    if (usersById[rid]) {
+      return {
+        ...t,
+        sourceMember: {
+          ...usersById[rid],
+          linkKind: 'member',
+          detail: 'Activity credited from this member in your network',
+        },
+      };
+    }
+
+    const buyerUserId = orderIdToBuyerUserId[rid];
+
+    if (buyerUserId && usersById[buyerUserId]) {
+      return {
+        ...t,
+        sourceMember: {
+          ...usersById[buyerUserId],
+          linkKind: 'order_buyer',
+          detail: 'Linked to a product order placed by this member',
+        },
+      };
+    }
+
+    return {
+      ...t,
+      sourceMember: {
+        name: 'Member or order not found',
+        linkKind: 'unresolved_ref',
+        refIdTail: rid.slice(-6),
+        detail: 'The stored link no longer matches a user or order in the system.',
+      },
+    };
+  });
+}
+
+/**
  * GET /api/user/transactions
- * Returns logged-in user's ledger entries.
+ * Returns logged-in user's ledger entries (with sourceMember when reference resolves).
  */
 export async function getMyTransactions(req, res, next) {
   try {
@@ -132,9 +344,11 @@ export async function getMyTransactions(req, res, next) {
       .sort({ createdAt: -1 })
       .lean();
 
+    const enriched = await attachSourceMembersToLedgers(transactions);
+
     res.json({
       success: true,
-      data: { transactions },
+      data: { transactions: enriched },
     });
   } catch (error) {
     next(error);

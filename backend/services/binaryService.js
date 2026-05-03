@@ -3,7 +3,10 @@ import User from '../models/User.js';
 import BinaryStats from '../models/BinaryStats.js';
 import { addIncome } from './walletService.js';
 
-const FIXED_MATCHING_AMOUNT = 100;
+/** Display / accounting: ₹75 credited conceptually per leg when a BV pair matches (₹150 per matched pair). */
+export const BINARY_MATCH_AMOUNT_PER_LEG = 75;
+
+export const BINARY_MATCH_TOTAL_PER_PAIR = BINARY_MATCH_AMOUNT_PER_LEG * 2;
 
 const USER_PARENT_PROJECTION = 'parentId position';
 
@@ -86,7 +89,7 @@ export async function processBinaryIncome(userId, businessVolume) {
       }
 
       const pairs = Math.min(stats.leftCarry, stats.rightCarry);
-      const commission = pairs * FIXED_MATCHING_AMOUNT;
+      const commission = pairs * BINARY_MATCH_TOTAL_PER_PAIR;
 
       stats.leftCarry -= pairs;
       stats.rightCarry -= pairs;
@@ -95,7 +98,10 @@ export async function processBinaryIncome(userId, businessVolume) {
       await stats.save({ session });
 
       if (commission > 0) {
-        await addIncome(uplineId, commission, 'binary', userId, session);
+        const perLegTotal = pairs * BINARY_MATCH_AMOUNT_PER_LEG;
+        await addIncome(uplineId, commission, 'binary', userId, session, {
+          binaryMatchLegs: [perLegTotal, perLegTotal],
+        });
       }
     }
 
@@ -110,4 +116,5 @@ export async function processBinaryIncome(userId, businessVolume) {
   }
 }
 
-export { FIXED_MATCHING_AMOUNT };
+/** @deprecated use BINARY_MATCH_TOTAL_PER_PAIR */
+export const FIXED_MATCHING_AMOUNT = BINARY_MATCH_TOTAL_PER_PAIR;

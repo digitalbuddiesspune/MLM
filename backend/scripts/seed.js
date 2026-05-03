@@ -6,6 +6,8 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import Counter from '../models/Counter.js';
+import { ensureReferralNumber } from '../services/referralNumberService.js';
 
 const SALT_ROUNDS = 10;
 
@@ -13,6 +15,12 @@ async function seed() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('MongoDB connected.');
+
+    await Counter.findOneAndUpdate(
+      { _id: 'userReferral' },
+      { $setOnInsert: { seq: 100_000 } },
+      { upsert: true }
+    );
 
     const admin = {
       name: 'Balwant More',
@@ -43,6 +51,20 @@ async function seed() {
         parentId: null,
       });
       console.log(`Created admin: ${admin.email}`);
+    }
+
+    const missingRef = await User.find({ referralNumber: { $exists: false } })
+      .sort({ createdAt: 1 })
+      .select('_id')
+      .lean();
+
+    let assigned = 0;
+    for (const row of missingRef) {
+      await ensureReferralNumber(row._id);
+      assigned += 1;
+    }
+    if (assigned > 0) {
+      console.log(`Assigned numeric referral codes to ${assigned} user(s).`);
     }
 
     console.log('\nDone!');

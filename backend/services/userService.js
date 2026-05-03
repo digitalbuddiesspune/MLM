@@ -3,12 +3,47 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { findBinaryPlacement } from './treeService.js';
 import { applySponsorJoinEffects, autoActivateEligibleUplines } from './levelService.js';
+import { nextReferralNumber, ensureReferralNumber, FIRST_REFERRAL_NUMBER } from './referralNumberService.js';
 
 const SALT_ROUNDS = 10;
+
+async function resolveSponsorMongoId(sponsorInput, session) {
+  const s = String(sponsorInput ?? '').trim();
+  if (!s) {
+    const err = new Error('Sponsor ID is required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (!/^\d+$/.test(s)) {
+    const err = new Error('Sponsor code must be numbers only');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const num = Number(s);
+  if (!Number.isSafeInteger(num) || num < FIRST_REFERRAL_NUMBER) {
+    const err = new Error('Invalid sponsor referral code');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const q = User.findOne({ referralNumber: num }).select('_id');
+  const sponsor = session ? await q.session(session).lean() : await q.lean();
+
+  if (!sponsor) {
+    const err = new Error('Sponsor not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return String(sponsor._id);
+}
 
 /**
  * Registers a new user with minimal fields.
  * If sponsorId is provided, places them in the binary tree under sponsor.
+ * Sponsor must be specified as numeric referralNumber (digits only).
  * @param {{ name: string, mobile: string, email: string, password: string, sponsorId?: string }} payload
  * @returns {Promise<Object>} Created user (password excluded)
  */
@@ -34,30 +69,16 @@ export async function register(payload) {
   }
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-  const normalizedSponsorId = String(sponsorId ?? '').trim();
-  if (!normalizedSponsorId) {
-    const err = new Error('Sponsor ID is required');
-    err.statusCode = 400;
-    throw err;
-  }
-  if (!mongoose.isValidObjectId(normalizedSponsorId)) {
-    const err = new Error('Sponsor ID must be a valid MongoDB ObjectId');
-    err.statusCode = 400;
-    throw err;
-  }
-
-  const sponsor = await User.findById(normalizedSponsorId).select('_id').lean();
-  if (!sponsor) {
-    const err = new Error('Sponsor not found');
-    err.statusCode = 404;
-    throw err;
-  }
+  const sponsorCode = String(sponsorId ?? '').trim();
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    const normalizedSponsorId = await resolveSponsorMongoId(sponsorCode, session);
     const { parentId, position } = await findBinaryPlacement(normalizedSponsorId, session);
+
+    const referralNumber = await nextReferralNumber(session);
 
     const [createdUser] = await User.create(
       [
@@ -69,6 +90,7 @@ export async function register(payload) {
           sponsorId: normalizedSponsorId,
           parentId,
           position,
+          referralNumber,
         },
       ],
       { session }
@@ -85,6 +107,7 @@ export async function register(payload) {
     await autoActivateEligibleUplines(parentId, session);
 
     await session.commitTransaction();
+
     const user = await User.findById(createdUser._id).select('-password').lean();
     return user;
   } catch (error) {
@@ -123,6 +146,7 @@ export async function login(payload) {
     throw err;
   }
 
-  const { password: _, ...userWithoutPassword } = user;
-  return userWithoutPassword;
+  await ensureReferralNumber(user._id);
+
+  return User.findById(user._id).select('-password').lean();
 }

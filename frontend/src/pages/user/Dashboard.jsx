@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
 import { getMyWallet, getMyTransactions, getMyTeam } from '../../api/user.js';
+import { formatBinaryMatchingDetail } from '../../utils/ledgerDisplay.js';
 
 const DashboardIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-7 shrink-0">
@@ -13,12 +14,11 @@ const DashboardIcon = () => (
 export default function Dashboard() {
   const [copied, setCopied] = useState(false);
   const user = getStoredUser();
-  const referralId = user?._id ?? '';
 
   const [walletQuery, transactionsQuery, teamQuery] = useQueries({
     queries: [
       {
-        queryKey: ['user-dashboard', 'wallet'],
+        queryKey: ['user-wallet'],
         queryFn: getMyWallet,
       },
       {
@@ -40,6 +40,13 @@ export default function Dashboard() {
   const rank = walletQuery.data?.data?.rank ?? user?.rank ?? 'Beginner';
   const teamSize = Number(teamQuery.data?.data?.users?.length ?? 0);
 
+  const referralCode =
+    walletQuery.data?.data?.referralNumber != null
+      ? String(walletQuery.data.data.referralNumber)
+      : user?.referralNumber != null
+        ? String(user.referralNumber)
+        : '';
+
   const monthEarnings = useMemo(() => {
     const transactions = transactionsQuery.data?.data?.transactions ?? [];
     const now = new Date();
@@ -60,15 +67,25 @@ export default function Dashboard() {
       .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0);
   }, [transactionsQuery.data]);
 
+  const latestBinaryMatchLabel = useMemo(() => {
+    const list = transactionsQuery.data?.data?.transactions ?? [];
+    for (const t of list) {
+      if (t.type !== 'binary') continue;
+      const label = formatBinaryMatchingDetail(t);
+      if (label) return label;
+    }
+    return null;
+  }, [transactionsQuery.data]);
+
   const handleCopyReferralId = async () => {
-    if (!referralId) return;
+    if (!referralCode) return;
     try {
-      await navigator.clipboard.writeText(referralId);
+      await navigator.clipboard.writeText(referralCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       const input = document.createElement('input');
-      input.value = referralId;
+      input.value = referralCode;
       document.body.appendChild(input);
       input.select();
       document.execCommand('copy');
@@ -89,20 +106,29 @@ export default function Dashboard() {
         <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      {/* Referral ID - copyable */}
+      {!loading && latestBinaryMatchLabel && (
+        <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50/90 px-4 py-3 text-sm text-teal-950 shadow-sm">
+          <span className="font-semibold text-teal-900">Binary matching</span>
+          <span className="ml-2 font-mono text-base font-bold tracking-tight text-teal-800">
+            {latestBinaryMatchLabel}
+          </span>
+          <span className="ml-2 text-xs font-normal text-teal-700/90">Left + right pairing (per payout)</span>
+        </div>
+      )}
+
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-slate-500">Referral ID</p>
-          <p className="mt-1 truncate font-mono text-sm font-semibold text-slate-900" title={referralId}>
-            {referralId || '—'}
+          <p className="text-sm font-medium text-slate-500">Referral code</p>
+          <p className="mt-1 truncate font-mono text-sm font-semibold text-slate-900" title={referralCode || undefined}>
+            {referralCode || '—'}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">Share this ID when inviting others to register under you</p>
+          <p className="mt-0.5 text-xs text-slate-500">Digits only — share this code when others register under you</p>
         </div>
         <button
           type="button"
           onClick={handleCopyReferralId}
-          disabled={!referralId}
-          className="flex shrink-0 items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!referralCode}
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copied ? (
             <>

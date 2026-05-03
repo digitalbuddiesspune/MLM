@@ -5,6 +5,19 @@ export async function getMyWallet() {
   return data;
 }
 
+/**
+ * Swap left/right placement legs under a parent in your tree (default: you).
+ * @param {{ parentId?: string }} [opts]
+ */
+export async function swapMyBinaryChildren(opts = {}) {
+  const body = {};
+  if (opts.parentId != null && String(opts.parentId).trim() !== '') {
+    body.parentId = String(opts.parentId).trim();
+  }
+  const { data } = await api.post('/user/binary-tree/swap-children', body);
+  return data;
+}
+
 export async function getMyTransactions() {
   const { data } = await api.get('/user/transactions');
   return data;

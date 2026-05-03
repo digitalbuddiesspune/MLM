@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { clearAuth, getStoredUser } from '../api/auth.js';
+import { getMyWallet } from '../api/user.js';
 
 const DashboardIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
@@ -70,6 +72,12 @@ export default function UserLayout() {
 
   const user = getStoredUser();
   const userInitial = user?.name?.charAt(0)?.toUpperCase() ?? 'U';
+
+  const { data: walletPayload, isLoading: walletLoading } = useQuery({
+    queryKey: ['user-wallet'],
+    queryFn: getMyWallet,
+  });
+  const walletBalance = Number(walletPayload?.data?.balance ?? 0);
 
   return (
     <div className="flex min-h-[calc(100vh-0px)] bg-slate-50">
@@ -221,10 +229,13 @@ export default function UserLayout() {
             {/* Wallet balance */}
             <Link
               to="/user/wallet"
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm hover:bg-emerald-100/80"
+              title="Wallet balance — tap for details"
             >
-              <span className="text-slate-500">₹</span>
-              <span>0</span>
+              <span className="font-medium text-emerald-700">₹</span>
+              <span className="min-w-[2.75rem] text-right tabular-nums font-semibold text-emerald-800">
+                {walletLoading ? '…' : walletBalance.toLocaleString()}
+              </span>
             </Link>
 
             {/* Notifications */}

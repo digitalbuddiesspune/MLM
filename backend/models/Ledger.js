@@ -33,6 +33,11 @@ const ledgerSchema = new mongoose.Schema(
       ref: 'PayoutRun',
       default: null,
     },
+    /** Optional breakdown, e.g. binary matching legs `[75, 75]`. */
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   { timestamps: true }
 );

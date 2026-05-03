@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register as registerApi, setAuth, getDashboardPathForRole } from '../api/auth.js';
 
+function digitsOnly(value) {
+  return String(value ?? '').replace(/\D/g, '');
+}
+
 export default function RegisterModal({ onClose, onSwitchToLogin }) {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
@@ -142,17 +146,21 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
             />
           </div>
           <div>
-            <label htmlFor="modal-sponsorId" className="block text-sm font-medium text-slate-700">Sponsor ID <span className="text-red-500">*</span></label>
+            <label htmlFor="modal-sponsorId" className="block text-sm font-medium text-slate-700">Sponsor referral code <span className="text-red-500">*</span></label>
             <input
               id="modal-sponsorId"
-              type="text"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
               value={sponsorId}
-              onChange={(e) => setSponsorId(e.target.value)}
+              onChange={(e) => setSponsorId(digitsOnly(e.target.value))}
               required
-              placeholder="Enter sponsor's ID"
+              placeholder="Numbers only (e.g. 100001)"
               disabled={loading}
               className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
             />
+            <p className="mt-1 text-xs text-slate-500">Use the sponsor&apos;s numeric code (digits only)</p>
           </div>
           <button
             type="submit"

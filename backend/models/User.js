@@ -115,6 +115,13 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    /** Public numeric referral code for sponsor field (digits only). */
+    referralNumber: {
+      type: Number,
+      unique: true,
+      sparse: true,
+      min: 100_001,
+    },
   },
   {
     timestamps: true,

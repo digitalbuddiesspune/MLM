@@ -18,6 +18,13 @@ const addressSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    streetAddress: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 5,
+      maxlength: 500,
+    },
     pincode: {
       type: String,
       required: true,

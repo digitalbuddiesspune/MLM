@@ -61,6 +61,7 @@ export async function detectAddressState(req, res, next) {
 function validateAddressPayload(payload) {
   const fullName = normalizeText(payload.fullName);
   const phone = normalizeText(payload.phone);
+  const streetAddress = normalizeText(payload.streetAddress);
   const pincode = normalizeText(payload.pincode);
 
   if (!NAME_REGEX.test(fullName)) {
@@ -69,10 +70,13 @@ function validateAddressPayload(payload) {
   if (!PHONE_REGEX.test(phone)) {
     return { error: 'Phone must start with 6/7/8/9 and be exactly 10 digits' };
   }
+  if (streetAddress.length < 5 || streetAddress.length > 500) {
+    return { error: 'Street address must be between 5 and 500 characters' };
+  }
   if (!PINCODE_REGEX.test(pincode)) {
     return { error: 'Pincode must be exactly 6 digits' };
   }
-  return { fullName, phone, pincode };
+  return { fullName, phone, streetAddress, pincode };
 }
 
 export async function getMyAddresses(req, res, next) {
@@ -100,7 +104,10 @@ export async function createMyAddress(req, res, next) {
 
     const created = await Address.create({
       userId: req.userId,
-      ...parsed,
+      fullName: parsed.fullName,
+      phone: parsed.phone,
+      streetAddress: parsed.streetAddress,
+      pincode: parsed.pincode,
       district: location.district,
       tehsil: location.tehsil,
       state: location.state,

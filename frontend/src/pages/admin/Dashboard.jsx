@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { getAdminStats, getAdminUsers } from '../../api/admin.js';
 import { getStoredUser } from '../../api/auth.js';
+import { getMyWallet } from '../../api/user.js';
 
 const DashboardIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-7 shrink-0">
@@ -14,11 +15,13 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('users');
   const [copied, setCopied] = useState(false);
   const user = getStoredUser();
-  const referralId = user?._id ?? '';
-  const referralIdShort = referralId ? referralId.slice(-6) : '';
 
-  const [statsQuery, usersQuery, adminsQuery] = useQueries({
+  const [walletQuery, statsQuery, usersQuery, adminsQuery] = useQueries({
     queries: [
+      {
+        queryKey: ['admin', 'dashboard', 'wallet'],
+        queryFn: getMyWallet,
+      },
       {
         queryKey: ['admin', 'stats'],
         queryFn: getAdminStats,
@@ -37,24 +40,33 @@ export default function AdminDashboard() {
     ],
   });
 
+  const referralCode =
+    walletQuery.data?.data?.referralNumber != null
+      ? String(walletQuery.data.data.referralNumber)
+      : user?.referralNumber != null
+        ? String(user.referralNumber)
+        : '';
+
   const stats = statsQuery.data ?? null;
   const recentUsers = usersQuery.data?.users ?? [];
   const usersTotal = usersQuery.data?.pagination?.total ?? 0;
   const admins = adminsQuery.data?.users ?? [];
   const adminsTotal = adminsQuery.data?.pagination?.total ?? 0;
-  const loading = statsQuery.isLoading || usersQuery.isLoading || adminsQuery.isLoading;
-  const errorMessage = statsQuery.error || usersQuery.error || adminsQuery.error;
+  const loading =
+    walletQuery.isLoading || statsQuery.isLoading || usersQuery.isLoading || adminsQuery.isLoading;
+  const errorMessage =
+    walletQuery.error || statsQuery.error || usersQuery.error || adminsQuery.error;
   const error = errorMessage ? (errorMessage.response?.data?.error ?? 'Failed to load dashboard') : '';
 
   const handleCopyReferralId = async () => {
-    if (!referralId) return;
+    if (!referralCode) return;
     try {
-      await navigator.clipboard.writeText(referralId);
+      await navigator.clipboard.writeText(referralCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       const input = document.createElement('input');
-      input.value = referralId;
+      input.value = referralCode;
       document.body.appendChild(input);
       input.select();
       document.execCommand('copy');
@@ -97,14 +109,14 @@ export default function AdminDashboard() {
 
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-500">Referral ID</p>
-          <p className="mt-1 truncate font-mono text-sm font-semibold text-slate-900">{referralIdShort || '—'}</p>
-          <p className="mt-0.5 text-xs text-slate-500">Share this ID when inviting others to register under you</p>
+          <p className="text-sm font-medium text-slate-500">Referral code</p>
+          <p className="mt-1 truncate font-mono text-sm font-semibold text-slate-900">{referralCode || '—'}</p>
+          <p className="mt-0.5 text-xs text-slate-500">Digits only — share this code when others register under you</p>
         </div>
         <button
           type="button"
           onClick={handleCopyReferralId}
-          disabled={!referralId}
+          disabled={!referralCode}
           className="flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copied ? (

@@ -1,4 +1,5 @@
 import { api } from './axios.js';
+import { queryClient } from '../queryClient.js';
 
 const AUTH_KEYS = {
   TOKEN: 'token',
@@ -20,11 +21,14 @@ export async function register({ name, mobile, email, password, sponsorId = null
 export function setAuth(token, user) {
   if (token) localStorage.setItem(AUTH_KEYS.TOKEN, token);
   if (user) localStorage.setItem(AUTH_KEYS.USER, JSON.stringify(user));
+  /* Drop previous session’s React Query cache so another account never sees stale wallet/tree/profile data. */
+  queryClient.clear();
 }
 
 export function clearAuth() {
   localStorage.removeItem(AUTH_KEYS.TOKEN);
   localStorage.removeItem(AUTH_KEYS.USER);
+  queryClient.clear();
 }
 
 export function getStoredUser() {
