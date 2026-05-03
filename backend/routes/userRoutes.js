@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getMyTeam,
   getMyProfile,
+  changeMyPassword,
   getBinaryTree,
   swapBinaryChildren,
   getReferralTree,
@@ -17,6 +18,7 @@ const router = Router();
 
 router.get('/team', requireAuth, getMyTeam);
 router.get('/profile', requireAuth, getMyProfile);
+router.patch('/password', requireAuth, changeMyPassword);
 router.get('/binary-tree', requireAuth, getBinaryTree);
 router.post('/binary-tree/swap-children', requireAuth, swapBinaryChildren);
 router.get('/referral-tree', requireAuth, getReferralTree);

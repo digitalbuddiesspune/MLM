@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   getStats,
   getUsers,
+  getAdminUserDetail,
+  getUserReferralTree,
   getUserWallets,
   getWithdrawalRequests,
   reviewWithdrawalRequest,
@@ -17,6 +19,8 @@ const router = Router();
 
 router.get('/stats', requireAuth, requireAdmin, getStats);
 router.get('/users', requireAuth, requireAdmin, getUsers);
+router.get('/users/:id/referral-tree', requireAuth, requireAdmin, getUserReferralTree);
+router.get('/users/:id', requireAuth, requireAdmin, getAdminUserDetail);
 router.get('/user-wallets', requireAuth, requireAdmin, getUserWallets);
 router.get('/withdrawal-requests', requireAuth, requireAdmin, getWithdrawalRequests);
 router.patch('/withdrawal-requests/:id', requireAuth, requireAdmin, reviewWithdrawalRequest);

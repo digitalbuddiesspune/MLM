@@ -1,12 +1,26 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import ListPagination from '../../../components/ListPagination.jsx';
 import { getMyTeam } from '../../../api/admin.js';
 
+const PAGE_SIZE = 15;
+
 export default function AdminMyDirect() {
+  const [page, setPage] = useState(1);
   const { data, isLoading, error } = useQuery({
-    queryKey: ['admin-level', 'my-direct'],
-    queryFn: getMyTeam,
+    queryKey: ['admin-level', 'my-direct', page],
+    queryFn: () => getMyTeam({ page, limit: PAGE_SIZE }),
   });
   const rows = data?.data?.users ?? [];
+  const pagination = data?.data?.pagination;
+
+  useEffect(() => {
+    const totalPages = pagination?.totalPages ?? 1;
+    if (pagination && page > totalPages) {
+      setPage(Math.max(1, totalPages));
+    }
+  }, [pagination?.totalPages, page, pagination]);
+
   const message = error ? (error.response?.data?.error ?? 'Failed to load direct users') : '';
 
   return (
@@ -39,6 +53,16 @@ export default function AdminMyDirect() {
               </tbody>
             </table>
           </div>
+          {pagination && (
+            <ListPagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+              disabled={isLoading}
+            />
+          )}
         </div>
       )}
     </div>

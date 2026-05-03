@@ -23,13 +23,18 @@ export async function getMyTransactions() {
   return data;
 }
 
-export async function getMyTeam() {
-  const { data } = await api.get('/user/team');
+export async function getMyTeam(params = {}) {
+  const { data } = await api.get('/user/team', { params });
   return data;
 }
 
 export async function getMyProfile() {
   const { data } = await api.get('/user/profile');
+  return data;
+}
+
+export async function changeMyPassword(payload) {
+  const { data } = await api.patch('/user/password', payload);
   return data;
 }
 

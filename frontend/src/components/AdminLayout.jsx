@@ -257,12 +257,16 @@ export default function AdminLayout() {
             )}
           </button>
           <div className="flex-1 lg:flex-none" />
-          <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setProfileOpen((o) => !o); }}
+              onClick={() => {
+                setProfileOpen((o) => !o);
+              }}
               className="flex items-center gap-2 rounded-lg p-1.5 pr-2 text-slate-700 hover:bg-slate-100"
               aria-expanded={profileOpen}
+              aria-haspopup="menu"
+              aria-controls="admin-profile-menu"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
                 {userInitial}
@@ -272,6 +276,74 @@ export default function AdminLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
+            {profileOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileOpen(false)}
+                  aria-hidden
+                />
+                <div
+                  id="admin-profile-menu"
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+                >
+                  <Link
+                    to="/admin/dashboard"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/admin/settings"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Settings
+                  </Link>
+                  <Link
+                    to="/admin/kyc-approvals"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    KYC approvals
+                  </Link>
+                  <Link
+                    to="/admin/users"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Users
+                  </Link>
+                  <hr className="my-1 border-slate-100" />
+                  <Link
+                    to="/"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Back to site
+                  </Link>
+                  <hr className="my-1 border-slate-100" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      handleLogout();
+                    }}
+                    className="block w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </header>
         <div className="flex-1 p-4 sm:p-6 lg:p-8">

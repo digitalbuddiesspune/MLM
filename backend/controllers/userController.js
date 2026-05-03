@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Order from '../models/Order.js';
 import Ledger from '../models/Ledger.js';
@@ -12,6 +13,8 @@ import {
 } from '../services/treeService.js';
 import { ensureReferralNumber } from '../services/referralNumberService.js';
 
+const PASSWORD_SALT_ROUNDS = 10;
+
 /**
  * GET /api/user/team
  * Returns users where sponsorId = logged-in user's id.
@@ -20,14 +23,48 @@ import { ensureReferralNumber } from '../services/referralNumberService.js';
 export async function getMyTeam(req, res, next) {
   try {
     const userId = req.userId;
-    const users = await User.find({ sponsorId: userId })
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .lean();
+    const rawLimit = req.query.limit;
+
+    if (rawLimit === undefined || rawLimit === '') {
+      const users = await User.find({ sponsorId: userId })
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        data: { users },
+      });
+      return;
+    }
+
+    const limit = Math.min(100, Math.max(1, parseInt(rawLimit, 10) || 15));
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const filter = { sponsorId: userId };
+
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     res.json({
       success: true,
-      data: { users },
+      data: {
+        users,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      },
     });
   } catch (error) {
     next(error);
@@ -61,6 +98,53 @@ export async function getMyProfile(req, res, next) {
       success: true,
       data: { user },
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * PATCH /api/user/password
+ * Body: { currentPassword, newPassword } — authenticated user updates their own password (admin or member).
+ */
+export async function changeMyPassword(req, res, next) {
+  try {
+    const userId = req.userId;
+    const { currentPassword, newPassword } = req.body ?? {};
+
+    if (currentPassword == null || typeof currentPassword !== 'string' || currentPassword.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Current password is required',
+      });
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'New password must be at least 6 characters',
+      });
+    }
+    if (newPassword === currentPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'New password must be different from the current password',
+      });
+    }
+
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
+    await user.save();
+
+    res.json({ success: true, data: { updated: true } });
   } catch (error) {
     next(error);
   }

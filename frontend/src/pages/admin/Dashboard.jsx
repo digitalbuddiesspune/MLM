@@ -91,12 +91,24 @@ export default function AdminDashboard() {
   }
 
   const statCards = [
-    { label: 'Total users', value: stats?.totalUsers ?? 0, sub: 'All roles', icon: '👥' },
-    { label: 'Admins', value: adminsTotal, sub: 'Admin accounts', icon: '🛡️' },
-    { label: 'Active users', value: stats?.activeUsers ?? 0, sub: 'Currently active', icon: '✅' },
-    { label: 'Total wallet balance', value: `₹${(stats?.totalWalletBalance ?? 0).toLocaleString()}`, sub: 'Platform', icon: '💰' },
-    { label: 'Pending payouts', value: `₹${(stats?.pendingPayoutAmount ?? 0).toLocaleString()}`, sub: 'Unprocessed', icon: '⏳' },
-    { label: 'Payout runs', value: stats?.payoutRunsCount ?? 0, sub: 'Completed', icon: '📋' },
+    { label: 'Total users', value: stats?.totalUsers ?? 0, sub: 'All roles', icon: '👥', to: '/admin/users' },
+    { label: 'Admins', value: adminsTotal, sub: 'Admin accounts', icon: '🛡️', to: '/admin/admins' },
+    { label: 'Active users', value: stats?.activeUsers ?? 0, sub: 'Currently active', icon: '✅', to: '/admin/users' },
+    {
+      label: 'Total wallet balance',
+      value: `₹${(stats?.totalWalletBalance ?? 0).toLocaleString()}`,
+      sub: 'Platform',
+      icon: '💰',
+      to: '/admin/user-wallets',
+    },
+    {
+      label: 'Pending payouts',
+      value: `₹${(stats?.pendingPayoutAmount ?? 0).toLocaleString()}`,
+      sub: 'Unprocessed',
+      icon: '⏳',
+      to: '/admin/payouts',
+    },
+    { label: 'Payout runs', value: stats?.payoutRunsCount ?? 0, sub: 'Completed', icon: '📋', to: '/admin/payouts' },
   ];
 
   return (
@@ -140,7 +152,7 @@ export default function AdminDashboard() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
         <Link
           to="/admin/team"
-          className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-indigo-200 hover:bg-indigo-50/50"
+          className="flex cursor-pointer items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-indigo-200 hover:bg-indigo-50/50"
         >
           <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-2xl">👥</span>
           <div>
@@ -153,7 +165,7 @@ export default function AdminDashboard() {
         </Link>
         <Link
           to="/admin/binary-tree"
-          className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-indigo-200 hover:bg-indigo-50/50"
+          className="flex cursor-pointer items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-indigo-200 hover:bg-indigo-50/50"
         >
           <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100 text-2xl">🌳</span>
           <div>
@@ -167,17 +179,21 @@ export default function AdminDashboard() {
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {statCards.map(({ label, value, sub, icon }) => (
-          <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        {statCards.map(({ label, value, sub, icon, to }) => (
+          <Link
+            key={label}
+            to={to}
+            className="block cursor-pointer rounded-xl border border-slate-200 bg-white p-4 shadow-sm outline-none ring-indigo-500 transition-colors hover:border-indigo-200 hover:bg-indigo-50/50 focus-visible:ring-2"
+          >
             <div className="flex items-start justify-between">
-              <div>
+              <div className="min-w-0 pr-2">
                 <p className="text-sm font-medium text-slate-500">{label}</p>
                 <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
                 <p className="mt-0.5 text-xs text-slate-500">{sub}</p>
               </div>
-              <span className="text-2xl" aria-hidden>{icon}</span>
+              <span className="shrink-0 text-2xl" aria-hidden>{icon}</span>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

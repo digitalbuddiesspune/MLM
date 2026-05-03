@@ -33,6 +33,7 @@ import AdminMyUserList from "../pages/admin/level/MyUserList";
 import AdminMyDirect from "../pages/admin/level/MyDirect";
 import AdminAllHierarchy from "../pages/admin/level/AllHierarchy";
 import AdminUsers from "../pages/admin/Users";
+import AdminUserDetail from "../pages/admin/UserDetail";
 import Admins from "../pages/admin/Admins";
 import AdminPayouts from "../pages/admin/Payouts";
 import AdminSettings from "../pages/admin/Settings";
@@ -81,12 +82,14 @@ const router = createBrowserRouter(
       <Route path="/admin" element={<RequireRole allowedRoles={['admin']}><AdminLayout /></RequireRole>}>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="level/my-hierarchy/:rootUserId" element={<AdminMyHierarchy />} />
         <Route path="level/my-hierarchy" element={<AdminMyHierarchy />} />
         <Route path="level/my-user-list" element={<AdminMyUserList />} />
         <Route path="level/my-direct" element={<AdminMyDirect />} />
         <Route path="level/all-hierarchy" element={<AdminAllHierarchy />} />
         <Route path="team" element={<Team />} />
         <Route path="binary-tree" element={<BinaryTree />} />
+        <Route path="users/:id" element={<AdminUserDetail />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="admins" element={<Admins />} />
         <Route path="products" element={<AdminProducts />} />

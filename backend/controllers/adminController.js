@@ -2,9 +2,18 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Ledger from '../models/Ledger.js';
+import Address from '../models/Address.js';
+import Order from '../models/Order.js';
+import Kyc from '../models/Kyc.js';
+import BinaryStats from '../models/BinaryStats.js';
 import PayoutRun from '../models/PayoutRun.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import { syncUserLevel } from '../services/levelService.js';
+import { getReferralTree as buildReferralTreeForUser } from '../services/treeService.js';
+
+function escapeRegexLiteral(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * GET /api/admin/stats
@@ -52,22 +61,140 @@ export async function getStats(req, res, next) {
 }
 
 /**
- * GET /api/admin/users?page=1&limit=10&search=&role=&isActive=&sponsorId=
+ * GET /api/admin/users/:id/referral-tree?maxDepth=
+ * Referral tree rooted at any user (admin). Same shape as /api/user/referral-tree.
+ */
+export async function getUserReferralTree(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user id',
+      });
+    }
+
+    const maxDepth = Math.min(Math.max(parseInt(req.query.maxDepth, 10) || 15, 1), 50);
+    const tree = await buildReferralTreeForUser(id, maxDepth);
+
+    res.json({
+      success: true,
+      data: { tree },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+const ADMIN_DETAIL_LEDGER_LIMIT = 100;
+const ADMIN_DETAIL_ORDERS_LIMIT = 50;
+const ADMIN_DETAIL_WITHDRAWALS_LIMIT = 50;
+
+/**
+ * GET /api/admin/users/:id
+ * Full user snapshot for admin: profile (no password), relations, wallet, KYC, addresses, ledger, orders, withdrawals, binary stats.
+ */
+export async function getAdminUserDetail(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user id',
+      });
+    }
+
+    const user = await User.findById(id)
+      .select('-password')
+      .populate('sponsorId', 'name email mobile referralNumber')
+      .populate('parentId', 'name email mobile referralNumber')
+      .populate('leftChildId', 'name email referralNumber mobile')
+      .populate('rightChildId', 'name email referralNumber mobile')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    const userOid = new mongoose.Types.ObjectId(id);
+
+    const [
+      wallet,
+      kyc,
+      addresses,
+      directReferralsCount,
+      ledger,
+      orders,
+      withdrawals,
+      binaryStats,
+    ] = await Promise.all([
+      Wallet.findOne({ userId: userOid }).lean(),
+      Kyc.findOne({ userId: userOid }).lean(),
+      Address.find({ userId: userOid }).sort({ updatedAt: -1 }).lean(),
+      User.countDocuments({ sponsorId: userOid }),
+      Ledger.find({ userId: userOid }).sort({ createdAt: -1 }).limit(ADMIN_DETAIL_LEDGER_LIMIT).lean(),
+      Order.find({ userId: userOid }).sort({ createdAt: -1 }).limit(ADMIN_DETAIL_ORDERS_LIMIT).lean(),
+      WithdrawalRequest.find({ userId: userOid }).sort({ createdAt: -1 }).limit(ADMIN_DETAIL_WITHDRAWALS_LIMIT).lean(),
+      BinaryStats.findOne({ userId: userOid }).lean(),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        wallet: wallet ?? null,
+        kyc: kyc ?? null,
+        addresses,
+        counts: {
+          directReferrals: directReferralsCount,
+        },
+        ledger,
+        orders,
+        withdrawals,
+        binaryStats: binaryStats ?? null,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/admin/users?page=1&limit=10&search=&searchName=&searchMobile=&role=&isActive=&sponsorId=
  */
 export async function getUsers(req, res, next) {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
     const search = (req.query.search || '').trim();
+    const searchName = (req.query.searchName || '').trim();
+    const searchMobile = (req.query.searchMobile || '').trim();
     const role = req.query.role;
     const isActive = req.query.isActive;
     const sponsorId = req.query.sponsorId;
 
     const filter = {};
-    if (search) {
+    if (searchName || searchMobile) {
+      const parts = [];
+      if (searchName) {
+        parts.push({ name: { $regex: escapeRegexLiteral(searchName), $options: 'i' } });
+      }
+      if (searchMobile) {
+        parts.push({ mobile: { $regex: escapeRegexLiteral(searchMobile), $options: 'i' } });
+      }
+      if (parts.length === 1) {
+        Object.assign(filter, parts[0]);
+      } else {
+        filter.$and = parts;
+      }
+    } else if (search) {
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
+        { name: { $regex: escapeRegexLiteral(search), $options: 'i' } },
+        { email: { $regex: escapeRegexLiteral(search), $options: 'i' } },
       ];
     }
     if (role) filter.role = role;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteUser, getAdminUsers } from '../../api/admin.js';
 
@@ -116,7 +117,14 @@ export default function AdminUsers() {
             ) : (
               users.map((u) => (
                 <tr key={u._id}>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{u.name}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <Link
+                      to={`/admin/users/${u._id}`}
+                      className="font-medium text-indigo-700 hover:text-indigo-900 hover:underline"
+                    >
+                      {u.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-600">{u.mobile ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{u.email}</td>
                   <td className="px-4 py-3">

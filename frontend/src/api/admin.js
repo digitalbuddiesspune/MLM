@@ -1,7 +1,7 @@
 import { api } from './axios.js';
 
-export async function getMyTeam() {
-  const { data } = await api.get('/user/team');
+export async function getMyTeam(params = {}) {
+  const { data } = await api.get('/user/team', { params });
   return data;
 }
 
@@ -24,6 +24,12 @@ export async function getReferralTree(maxDepth = 6) {
   return data;
 }
 
+/** Admin: referral tree rooted at another user. */
+export async function getAdminUserReferralTree(userId, maxDepth = 15) {
+  const { data } = await api.get(`/admin/users/${userId}/referral-tree`, { params: { maxDepth } });
+  return data;
+}
+
 export async function getAdminStats() {
   const { data } = await api.get('/admin/stats');
   return data;
@@ -31,6 +37,12 @@ export async function getAdminStats() {
 
 export async function getAdminUsers(params = {}) {
   const { data } = await api.get('/admin/users', { params });
+  return data;
+}
+
+/** Single-user admin snapshot (profile, wallet, KYC, addresses, ledger, orders, withdrawals, binary stats). */
+export async function getAdminUserDetail(id) {
+  const { data } = await api.get(`/admin/users/${id}`);
   return data;
 }
 
