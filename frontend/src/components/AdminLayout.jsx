@@ -78,6 +78,7 @@ const LevelItemIcon = () => (
 const sidebarLinks = [
   { to: '/admin/team', label: 'My Team', icon: <TeamIcon /> },
   { to: '/admin/binary-tree', label: 'Binary Tree', icon: <BinaryTreeIcon /> },
+  { to: '/admin/tree-manage', label: 'Tree Manager', icon: <BinaryTreeIcon /> },
   { to: '/admin/users', label: 'Users', icon: <UsersIcon /> },
   { to: '/admin/kyc-approvals', label: 'KYC Approvals', icon: <UsersIcon /> },
   { to: '/admin/admins', label: 'Admins', icon: <UsersIcon /> },

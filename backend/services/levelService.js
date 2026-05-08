@@ -101,8 +101,8 @@ export async function syncUserLevel(userId, session = null) {
 }
 
 /**
- * Auto-activates uplines when both left and right child nodes exist.
- * Runs from the provided parent up to root.
+ * Auto-activates uplines when a binary node has both LEFT and RIGHT children.
+ * Walks up the binary parentId chain from the provided placement parent.
  * @param {import('mongoose').Types.ObjectId | string | null} startParentId
  * @param {import('mongoose').ClientSession | null} [session=null]
  * @returns {Promise<number>} number of users auto-activated
@@ -113,14 +113,14 @@ export async function autoActivateEligibleUplines(startParentId, session = null)
 
   while (currentId) {
     let query = User.findById(currentId)
-      .select('_id parentId leftChildId rightChildId isActive activationDate renewalDate');
+      .select('_id parentId binaryLeftCount binaryRightCount isActive activationDate renewalDate');
     if (session) query = query.session(session);
     const current = await query.lean();
 
     if (!current) break;
 
-    const hasBothChildren = Boolean(current.leftChildId && current.rightChildId);
-    if (hasBothChildren && !current.isActive) {
+    const hasBothLegs = Number(current.binaryLeftCount ?? 0) > 0 && Number(current.binaryRightCount ?? 0) > 0;
+    if (hasBothLegs && !current.isActive) {
       const now = new Date();
       const renewalDate = new Date(now.getTime() + THIRTY_DAYS_IN_MS);
 

@@ -80,8 +80,8 @@ export default function Profile() {
               <dd className="mt-1 text-sm text-slate-900">{yesNo(user?.isApproved)}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase text-slate-500">Position</dt>
-              <dd className="mt-1 text-sm text-slate-900">{user?.position ?? '—'}</dd>
+              <dt className="text-xs font-medium uppercase text-slate-500">Placement side</dt>
+              <dd className="mt-1 text-sm text-slate-900">{user?.placementSide ?? '—'}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase text-slate-500">Activation Date</dt>

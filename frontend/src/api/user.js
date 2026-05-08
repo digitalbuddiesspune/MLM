@@ -5,16 +5,32 @@ export async function getMyWallet() {
   return data;
 }
 
-/**
- * Swap left/right placement legs under a parent in your tree (default: you).
- * @param {{ parentId?: string }} [opts]
- */
-export async function swapMyBinaryChildren(opts = {}) {
-  const body = {};
-  if (opts.parentId != null && String(opts.parentId).trim() !== '') {
-    body.parentId = String(opts.parentId).trim();
+export async function getMySponsorTree(opts = {}) {
+  const params = {};
+  if (opts?.maxDepth != null && opts.maxDepth !== 'all') {
+    params.maxDepth = opts.maxDepth;
   }
-  const { data } = await api.post('/user/binary-tree/swap-children', body);
+  if (opts?.maxDepth === 'all' || opts?.maxDepth === 'full') {
+    params.maxDepth = 'all';
+  }
+  if (opts?.rootId) params.rootId = opts.rootId;
+  if (opts?.format) params.format = opts.format;
+  const { data } = await api.get('/user/binary-tree', { params });
+  return data;
+}
+
+export async function getBinaryDashboard() {
+  const { data } = await api.get('/user/binary-dashboard');
+  return data;
+}
+
+export async function findBinaryTeamMember(referralNumber) {
+  const { data } = await api.get('/user/binary-find', { params: { referralNumber } });
+  return data;
+}
+
+export async function getBinaryGenealogy(memberId, params = {}) {
+  const { data } = await api.get(`/user/binary-genealogy/${encodeURIComponent(memberId)}`, { params });
   return data;
 }
 

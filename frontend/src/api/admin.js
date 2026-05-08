@@ -46,6 +46,36 @@ export async function getAdminUserDetail(id) {
   return data;
 }
 
+export async function getTreeById(id, params = {}) {
+  const { data } = await api.get(`/tree/${id}`, { params });
+  return data;
+}
+
+export async function placeTreeUser(payload) {
+  const { data } = await api.post('/tree/place', payload);
+  return data;
+}
+
+export async function manualPlaceTreeUser(payload) {
+  const { data } = await api.post('/tree/manual-place', payload);
+  return data;
+}
+
+export async function dragDropTreeUser(payload) {
+  const { data } = await api.post('/tree/drag-drop', payload);
+  return data;
+}
+
+export async function getTreePairs(id = 'me') {
+  const { data } = await api.get(`/tree/pairs/${id}`);
+  return data;
+}
+
+export async function getTreeIncome(id = 'me') {
+  const { data } = await api.get(`/tree/income/${id}`);
+  return data;
+}
+
 export async function updateUser(id, payload) {
   const { data } = await api.patch(`/admin/users/${id}`, payload);
   return data;

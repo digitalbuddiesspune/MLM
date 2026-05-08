@@ -45,6 +45,7 @@ import Checkout from "../pages/Checkout";
 import AdminOrders from "../pages/admin/Orders";
 import AdminUserWallets from "../pages/admin/UserWallets";
 import Cart from "../pages/Cart";
+import AdminTreeManage from "../pages/admin/TreeManage";
 
 const router = createBrowserRouter(
   createRoutesFromChildren(
@@ -89,6 +90,7 @@ const router = createBrowserRouter(
         <Route path="level/all-hierarchy" element={<AdminAllHierarchy />} />
         <Route path="team" element={<Team />} />
         <Route path="binary-tree" element={<BinaryTree />} />
+        <Route path="tree-manage" element={<AdminTreeManage />} />
         <Route path="users/:id" element={<AdminUserDetail />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="admins" element={<Admins />} />

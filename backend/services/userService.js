@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
-import { findBinaryPlacement } from './treeService.js';
+import { placeUserUnderSponsor } from './placementService.js';
 import { applySponsorJoinEffects, autoActivateEligibleUplines } from './levelService.js';
 import { nextReferralNumber, ensureReferralNumber, FIRST_REFERRAL_NUMBER } from './referralNumberService.js';
 
@@ -76,8 +76,6 @@ export async function register(payload) {
 
   try {
     const normalizedSponsorId = await resolveSponsorMongoId(sponsorCode, session);
-    const { parentId, position } = await findBinaryPlacement(normalizedSponsorId, session);
-
     const referralNumber = await nextReferralNumber(session);
 
     const [createdUser] = await User.create(
@@ -87,24 +85,25 @@ export async function register(payload) {
           mobile: mobile.trim(),
           email: email?.toLowerCase().trim(),
           password: hashedPassword,
-          sponsorId: normalizedSponsorId,
-          parentId,
-          position,
           referralNumber,
         },
       ],
       { session }
     );
 
-    const updateField = position === 'left' ? 'leftChildId' : 'rightChildId';
-    await User.findByIdAndUpdate(
-      parentId,
-      { $set: { [updateField]: createdUser._id } },
-      { session }
-    );
+    /* Sponsor-centric placement: append directly under sponsor, fill-left-first. */
+    const placementResult = await placeUserUnderSponsor({
+      userId: createdUser._id,
+      sponsorId: normalizedSponsorId,
+      preferredSide: null,
+      manualPlacement: false,
+      session,
+      actorUserId: createdUser._id,
+      reason: 'self-registration',
+    });
 
     await applySponsorJoinEffects(normalizedSponsorId, createdUser._id, session);
-    await autoActivateEligibleUplines(parentId, session);
+    await autoActivateEligibleUplines(placementResult.placement.parentId, session);
 
     await session.commitTransaction();
 

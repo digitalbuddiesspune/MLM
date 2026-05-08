@@ -1,8 +1,23 @@
 import mongoose from 'mongoose';
 
 const ROLES = ['user', 'admin'];
-const POSITIONS = ['left', 'right'];
+const PLACEMENT_SIDES = ['left', 'right'];
 const KYC_STATUSES = ['none', 'pending', 'approved', 'rejected'];
+
+const placementHistoryEntrySchema = new mongoose.Schema(
+  {
+    fromSponsorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    toSponsorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    fromSide: { type: String, enum: [...PLACEMENT_SIDES, null], default: null },
+    toSide: { type: String, enum: [...PLACEMENT_SIDES, null], default: null },
+    fromIndex: { type: Number, default: null },
+    toIndex: { type: Number, default: null },
+    movedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    movedAt: { type: Date, default: () => new Date() },
+    reason: { type: String, default: '', trim: true },
+  },
+  { _id: false }
+);
 
 const userSchema = new mongoose.Schema(
   {
@@ -34,30 +49,114 @@ const userSchema = new mongoose.Schema(
       default: 'user',
       required: true,
     },
+    /**
+     * Actual registration sponsor / recruiter. This remains stable even when the
+     * binary placement spills over into the sponsor's active placement path.
+     */
     sponsorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
+      index: true,
     },
     parentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
+      index: true,
     },
-    position: {
+    leftChild: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    rightChild: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    directSponsor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
+    /** Sequential placement order inside the unidirectional binary flow. */
+    placementIndex: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    /** Side under the binary placement parent. */
+    placementSide: {
       type: String,
-      enum: POSITIONS,
+      enum: PLACEMENT_SIDES,
       default: null,
+      index: true,
     },
-    leftChildId: {
+    pairMatched: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    activePlacement: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    placementSequence: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
+    binaryStatus: {
+      type: String,
+      enum: ['open_left', 'open_right', 'pair_matched', 'frozen'],
+      default: 'open_left',
+      index: true,
+    },
+    placementFrozen: {
+      type: Boolean,
+      default: false,
+    },
+    spilloverRedirect: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
     },
-    rightChildId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
+    children: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
+    },
+    /** Counts of THIS user's direct children grouped by side. Maintained on placement / drag-drop. */
+    binaryLeftCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    binaryRightCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pairCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    binaryIncome: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    manualPlacement: {
+      type: Boolean,
+      default: false,
+    },
+    placementHistory: {
+      type: [placementHistoryEntrySchema],
+      default: [],
     },
     isActive: {
       type: Boolean,
@@ -127,6 +226,24 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+userSchema.index({ sponsorId: 1, placementSequence: 1 });
+userSchema.index({ parentId: 1, placementSide: 1 });
+userSchema.index({ leftChild: 1 });
+userSchema.index({ rightChild: 1 });
+userSchema.index({ pairMatched: 1, activePlacement: 1 });
+
+userSchema.virtual('position').get(function getPosition() {
+  return this.placementSide ?? null;
+});
+userSchema.virtual('wallet').get(function getWalletBalance() {
+  return this.walletBalance ?? 0;
+});
+userSchema.virtual('status').get(function getMembershipStatus() {
+  return this.isActive ? 'active' : 'inactive';
+});
+
+userSchema.set('toJSON', { virtuals: true });
 
 const User = mongoose.model('User', userSchema);
 

@@ -67,7 +67,6 @@ export default function AdminUserDetail() {
   const ledger = payload?.ledger ?? [];
   const orders = payload?.orders ?? [];
   const withdrawals = payload?.withdrawals ?? [];
-  const binaryStats = payload?.binaryStats;
   const directReferrals = payload?.counts?.directReferrals ?? 0;
 
   return (
@@ -126,11 +125,17 @@ export default function AdminUserDetail() {
 
             <Card title="Binary placement">
               <dl className="grid gap-4 sm:grid-cols-2">
-                <Field label="Side under parent" value={user.position ?? '—'} />
-                <Field label="Sponsor" value={relatedUserLink(user.sponsorId)} />
-                <Field label="Placement parent (binary)" value={relatedUserLink(user.parentId)} />
-                <Field label="Left child" value={relatedUserLink(user.leftChildId)} />
-                <Field label="Right child" value={relatedUserLink(user.rightChildId)} />
+                <Field label="Side under sponsor" value={user.placementSide ?? '—'} />
+                <Field label="Placement sequence" value={String(user.placementSequence ?? user.placementIndex ?? 0)} />
+                <Field label="Registration sponsor" value={relatedUserLink(user.sponsorId)} />
+                <Field label="Binary parent" value={relatedUserLink(user.parentId)} />
+                <Field label="Left child" value={relatedUserLink(user.leftChild)} />
+                <Field label="Right child" value={relatedUserLink(user.rightChild)} />
+                <Field label="Binary status" value={user.binaryStatus ?? '—'} />
+                <Field label="Pair matched" value={user.pairMatched ? 'Yes' : 'No'} />
+                <Field label="Stored children" value={String(user.children?.length ?? 0)} />
+                <Field label="Manual placement" value={user.manualPlacement ? 'Yes' : 'No'} />
+                <Field label="Placement moves" value={String(user.placementHistory?.length ?? 0)} />
               </dl>
             </Card>
 
@@ -145,19 +150,13 @@ export default function AdminUserDetail() {
               )}
             </Card>
 
-            <Card title="Binary volume (BV)">
-              {binaryStats ? (
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Left BV" value={String(binaryStats.leftBV ?? 0)} />
-                  <Field label="Right BV" value={String(binaryStats.rightBV ?? 0)} />
-                  <Field label="Left carry" value={String(binaryStats.leftCarry ?? 0)} />
-                  <Field label="Right carry" value={String(binaryStats.rightCarry ?? 0)} />
-                  <Field label="Total matched pairs" value={String(binaryStats.totalMatchedPairs ?? 0)} />
-                  <Field label="Stats updated" value={fmtDate(binaryStats.updatedAt)} />
-                </dl>
-              ) : (
-                <p className="text-sm text-slate-500">No binary stats document yet.</p>
-              )}
+            <Card title="Sponsor-centric pair stats">
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <Field label="LEFT leg filled" value={String(user.binaryLeftCount ?? 0)} />
+                <Field label="RIGHT leg filled" value={String(user.binaryRightCount ?? 0)} />
+                <Field label="Pairs" value={String(user.pairCount ?? 0)} />
+                <Field label="Binary income" value={`₹${Number(user.binaryIncome ?? 0).toLocaleString()}`} />
+              </dl>
             </Card>
           </div>
 

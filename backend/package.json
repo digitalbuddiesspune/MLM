@@ -8,6 +8,7 @@
     "start": "nodemon index.js",
     "dev": "nodemon index.js",
     "seed": "node scripts/seed.js",
+    "seed:binary-demo": "node scripts/seed-binary-demo.js",
     "seed:products": "node scripts/seed-products.js",
     "promote": "node scripts/promote-user.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,6 +19,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^9.2.2",
     "multer": "^2.1.1",

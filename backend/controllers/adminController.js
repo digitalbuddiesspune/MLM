@@ -10,6 +10,7 @@ import PayoutRun from '../models/PayoutRun.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import { syncUserLevel } from '../services/levelService.js';
 import { getReferralTree as buildReferralTreeForUser } from '../services/treeService.js';
+import { refreshBinaryState } from '../services/placementService.js';
 
 function escapeRegexLiteral(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -108,9 +109,11 @@ export async function getAdminUserDetail(req, res, next) {
     const user = await User.findById(id)
       .select('-password')
       .populate('sponsorId', 'name email mobile referralNumber')
+      .populate('directSponsor', 'name email mobile referralNumber')
       .populate('parentId', 'name email mobile referralNumber')
-      .populate('leftChildId', 'name email referralNumber mobile')
-      .populate('rightChildId', 'name email referralNumber mobile')
+      .populate('leftChild', 'name email referralNumber mobile placementSide placementSequence binaryStatus')
+      .populate('rightChild', 'name email referralNumber mobile placementSide placementSequence binaryStatus')
+      .populate('children', 'name email referralNumber mobile placementSide placementIndex')
       .lean();
 
     if (!user) {
@@ -562,7 +565,7 @@ export async function updateUser(req, res, next) {
 
 /**
  * DELETE /api/admin/users/:id
- * Delete a user. Clears parent's leftChildId/rightChildId so the binary tree slot is freed.
+ * Delete a user from the binary tree. Clears the parent's leg and refreshes pair state.
  */
 export async function deleteUser(req, res, next) {
   try {
@@ -572,16 +575,24 @@ export async function deleteUser(req, res, next) {
       return res.status(400).json({ success: false, error: 'Invalid user id' });
     }
 
-    const user = await User.findById(id).select('parentId position sponsorId').lean();
+    const user = await User.findById(id).select('sponsorId parentId placementSide').lean();
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    if (user.parentId != null && user.position) {
-      const parentUpdate = user.position === 'left'
-        ? { $set: { leftChildId: null } }
-        : { $set: { rightChildId: null } };
-      await User.findByIdAndUpdate(user.parentId, parentUpdate);
+    if (user.parentId && user.placementSide) {
+      const parent = await User.findById(user.parentId);
+      if (parent) {
+        if (user.placementSide === 'left' && String(parent.leftChild) === String(user._id)) {
+          parent.leftChild = null;
+        }
+        if (user.placementSide === 'right' && String(parent.rightChild) === String(user._id)) {
+          parent.rightChild = null;
+        }
+        parent.children.pull(user._id);
+        await parent.save();
+        await refreshBinaryState(parent._id);
+      }
     }
 
     await User.findByIdAndDelete(id);

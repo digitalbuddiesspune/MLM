@@ -28,11 +28,10 @@ async function creditBinaryPairBonusIfEligible(order) {
   if (!buyer?.parentId) return false;
 
   const parent = await User.findById(buyer.parentId)
-    .select('_id leftChildId rightChildId')
+    .select('_id pairMatched')
     .lean();
 
-  const hasBothChildren = Boolean(parent?.leftChildId && parent?.rightChildId);
-  if (!parent?._id || !hasBothChildren) return false;
+  if (!parent?._id || !parent.pairMatched) return false;
 
   const bonusAmount = Number((((order.amount ?? 0) * BINARY_PAIR_BONUS_PERCENT) / 100).toFixed(2));
   if (bonusAmount <= 0) return false;

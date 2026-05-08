@@ -8,9 +8,14 @@ import Kyc from '../models/Kyc.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import {
   getBinaryTree as getBinaryTreeData,
+  shapeCanonicalBinaryPayload,
   getReferralTree as getReferralTreeData,
-  swapBinaryChildrenAt,
 } from '../services/treeService.js';
+import {
+  getBinaryDashboardSnapshot,
+  getBinaryGenealogyPath,
+  isBinaryDescendantOrSelf,
+} from '../services/treeQueryService.js';
 import { ensureReferralNumber } from '../services/referralNumberService.js';
 
 const PASSWORD_SALT_ROUNDS = 10;
@@ -82,10 +87,9 @@ export async function getMyProfile(req, res, next) {
 
     const user = await User.findById(userId)
       .select(
-        'name email mobile role sponsorId parentId position isActive kycStatus isApproved activationDate renewalDate walletBalance rank level sponsoredUsersCount levelReward joiningBonusAmount referralNumber createdAt'
+        'name email mobile role sponsorId parentId directSponsor leftChild rightChild placementSide placementIndex placementSequence pairMatched activePlacement binaryStatus isActive kycStatus isApproved activationDate renewalDate walletBalance rank level sponsoredUsersCount levelReward joiningBonusAmount referralNumber binaryLeftCount binaryRightCount pairCount binaryIncome createdAt'
       )
       .populate('sponsorId', 'name email mobile referralNumber')
-      .populate('parentId', 'name email mobile')
       .lean();
 
     if (!user) {
@@ -152,7 +156,7 @@ export async function changeMyPassword(req, res, next) {
 
 /**
  * GET /api/user/binary-tree
- * Query: maxDepth optional (1–50). Omit, 0 or "all" = full subtree (use carefully for huge trees).
+ * Query: maxDepth (1–50, or all/full), rootId (subtree root within your team), format=canonical|mlm
  * Requires auth.
  */
 export async function getBinaryTree(req, res, next) {
@@ -163,7 +167,9 @@ export async function getBinaryTree(req, res, next) {
 
     if (raw !== undefined && raw !== '') {
       const s = String(raw).trim().toLowerCase();
-      if (s !== 'all' && s !== 'full' && Number(raw) !== 0) {
+      if (s === 'all' || s === 'full') {
+        maxDepth = 50;
+      } else if (Number(raw) !== 0) {
         const n = parseInt(raw, 10);
         if (!Number.isNaN(n) && n >= 1) {
           maxDepth = Math.min(Math.max(n, 1), 50);
@@ -171,7 +177,25 @@ export async function getBinaryTree(req, res, next) {
       }
     }
 
-    const tree = await getBinaryTreeData(userId, maxDepth);
+    let rootOverrideId;
+    const rootRaw = req.query.rootId ?? req.query.subtreeRoot;
+    if (rootRaw != null && String(rootRaw).trim() !== '') {
+      const rid = String(rootRaw).trim();
+      if (!mongoose.isValidObjectId(rid)) {
+        return res.status(400).json({ success: false, error: 'Invalid rootId' });
+      }
+      const allowed = await isBinaryDescendantOrSelf(userId, rid);
+      if (!allowed) {
+        return res.status(403).json({ success: false, error: 'Subtree root is outside your binary team' });
+      }
+      rootOverrideId = rid;
+    }
+
+    const treeInternal = await getBinaryTreeData(userId, maxDepth, { rootOverrideId });
+    const fmt = String(req.query.format ?? '').toLowerCase();
+    const tree =
+      fmt === 'canonical' || fmt === 'mlm' ? shapeCanonicalBinaryPayload(treeInternal) : treeInternal;
+
     res.json({
       success: true,
       data: { tree },
@@ -181,31 +205,99 @@ export async function getBinaryTree(req, res, next) {
   }
 }
 
-/**
- * POST /api/user/binary-tree/swap-children
- * Body: { parentId? } — swap that member's left/right legs (default: yourself).
- * Allowed only if parent is you or under your placement tree (parentId chain to you).
- */
-export async function swapBinaryChildren(req, res, next) {
+/** GET /api/user/binary-dashboard */
+export async function getBinaryDashboard(req, res, next) {
   try {
-    const raw = req.body?.parentId;
-    const parentId =
-      raw != null && String(raw).trim() !== '' ? String(raw).trim() : req.userId;
+    const overview = await getBinaryDashboardSnapshot(req.userId);
+    if (!overview) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    res.json({ success: true, data: overview });
+  } catch (error) {
+    next(error);
+  }
+}
 
-    if (!mongoose.isValidObjectId(parentId)) {
-      const err = new Error('Invalid parent id');
-      err.statusCode = 400;
-      throw err;
+/** GET /api/user/binary-genealogy/:memberId — breadcrumb anchor defaults to viewer. */
+export async function getBinaryGenealogyUser(req, res, next) {
+  try {
+    const viewerId = req.userId;
+    const { memberId } = req.params;
+    if (!mongoose.isValidObjectId(memberId)) {
+      return res.status(400).json({ success: false, error: 'Invalid member id' });
     }
 
-    await swapBinaryChildrenAt(req.userId, parentId);
+    let anchorRoot = viewerId;
+    const ar = req.query.anchorRoot ?? req.query.subtreeRoot;
+    if (ar != null && String(ar).trim() !== '') {
+      const anchor = String(ar).trim();
+      if (!mongoose.isValidObjectId(anchor)) {
+        return res.status(400).json({ success: false, error: 'Invalid anchorRoot' });
+      }
+      const anchorOk = await isBinaryDescendantOrSelf(viewerId, anchor);
+      if (!anchorOk) {
+        return res.status(403).json({ success: false, error: 'Invalid anchor subtree' });
+      }
+      anchorRoot = anchor;
+    }
+
+    const underAnchor = await isBinaryDescendantOrSelf(anchorRoot, memberId);
+    if (!underAnchor) {
+      return res.status(403).json({ success: false, error: 'Member is outside the selected subtree' });
+    }
+
+    const data = await getBinaryGenealogyPath(anchorRoot, memberId);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** GET /api/user/binary-find?referralNumber= */
+export async function getBinaryFind(req, res, next) {
+  try {
+    const raw = req.query.referralNumber ?? req.query.code;
+    const num = Number(raw);
+    if (!Number.isSafeInteger(num) || num < 100_001) {
+      return res.status(400).json({ success: false, error: 'Valid referralNumber is required' });
+    }
+
+    const hit = await User.findOne({ referralNumber: num }).select('_id name referralNumber isActive').lean();
+    if (!hit) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const allowed = await isBinaryDescendantOrSelf(req.userId, hit._id);
+    if (!allowed) {
+      return res.status(403).json({ success: false, error: 'Member is outside your placement tree' });
+    }
+
     res.json({
       success: true,
-      data: { swapped: true, parentId },
+      data: {
+        id: String(hit._id),
+        name: hit.name,
+        referralNumber: hit.referralNumber,
+        status: hit.isActive ? 'active' : 'inactive',
+      },
     });
   } catch (error) {
     next(error);
   }
+}
+
+/**
+ * POST /api/user/binary-tree/swap-children
+ *
+ * Removed in the unidirectional binary-flow refactor. Side overrides are admin-only via the new
+ * /api/tree/manual-place and drag-drop endpoints.
+ */
+export async function swapBinaryChildren(_req, res) {
+  res.status(410).json({
+    success: false,
+    error:
+      'This endpoint is no longer available. Sides are admin-controlled in the unidirectional binary tree (use /api/tree/manual-place).',
+  });
 }
 
 /**
