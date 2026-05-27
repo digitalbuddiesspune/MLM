@@ -10,6 +10,11 @@ export async function addToCart(productId, quantity = 1) {
   return data;
 }
 
+export async function updateCartItem(productId, quantity) {
+  const { data } = await api.patch(`/cart/${productId}`, { quantity });
+  return data;
+}
+
 export async function removeFromCart(productId) {
   const { data } = await api.delete(`/cart/${productId}`);
   return data;

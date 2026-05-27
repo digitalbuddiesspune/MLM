@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { clearCart, getCart, removeFromCart } from '../api/cart.js';
+import { clearCart, getCart, removeFromCart, updateCartItem } from '../api/cart.js';
 import { isAuthenticated } from '../api/auth.js';
 
 export default function Cart() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
-  const [quantities, setQuantities] = useState({});
+  const inUserArea = location.pathname.startsWith('/user');
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['cart'],
     queryFn: getCart,
@@ -19,47 +21,52 @@ export default function Cart() {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
   });
+
+  const updateQtyMutation = useMutation({
+    mutationFn: ({ productId, quantity }) => updateCartItem(productId, quantity),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+  });
+
   const clearCartMutation = useMutation({
     mutationFn: clearCart,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      setQuantities({});
     },
   });
 
   const items = data?.data?.items ?? [];
   const subtotal = useMemo(
-    () =>
-      items.reduce((sum, item) => {
-        const qty = quantities[item.product._id] ?? item.quantity;
-        const price = Number(item.product?.price ?? 0);
-        return sum + (price * qty);
-      }, 0),
-    [items, quantities]
+    () => items.reduce((sum, item) => sum + Number(item.lineTotal ?? 0), 0),
+    [items]
   );
-  const totalAmount = useMemo(() => subtotal, [subtotal]);
+  const totalAmount = subtotal;
   const errorMessage = error?.response?.data?.error ?? 'Failed to load cart';
   const canProceed = items.length > 0;
 
   const handleProceedToCheckout = () => {
     if (!canProceed) return;
-    const firstProductId = items[0]?.product?._id;
-    if (!firstProductId) return;
     if (!isAuthenticated()) {
       navigate('/login');
       return;
     }
-    navigate(`/checkout?productId=${firstProductId}`);
-  };
-  const getQty = (item) => quantities[item.product._id] ?? item.quantity;
-  const updateQty = (item, nextQty) => {
-    const safeQty = Math.max(1, nextQty);
-    setQuantities((prev) => ({ ...prev, [item.product._id]: safeQty }));
+    navigate('/checkout?fromCart=1');
   };
 
+  const shopLink = inUserArea ? '/user/my-plan' : '/business-plan';
+
   return (
-    <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-      <h1 className="text-center text-4xl font-bold text-slate-900">Cart</h1>
+    <section className={`mx-auto max-w-6xl ${inUserArea ? '' : 'px-4 py-10 sm:px-6 lg:px-8'}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Cart</h1>
+        <Link
+          to={shopLink}
+          className="text-sm font-medium text-teal-600 hover:text-teal-700"
+        >
+          ← Continue shopping
+        </Link>
+      </div>
 
       {isLoading ? (
         <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 text-slate-500">Loading cart...</div>
@@ -68,8 +75,8 @@ export default function Cart() {
       ) : items.length === 0 ? (
         <div className="mt-8 rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <p className="text-slate-600">Your cart is empty.</p>
-          <Link to="/" className="mt-4 inline-flex text-sm font-semibold text-teal-600 hover:text-teal-700">
-            Continue Shopping
+          <Link to={shopLink} className="mt-4 inline-flex text-sm font-semibold text-teal-600 hover:text-teal-700">
+            Browse products
           </Link>
         </div>
       ) : (
@@ -81,7 +88,7 @@ export default function Cart() {
                 onClick={() => clearCartMutation.mutate()}
                 className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
               >
-                Clear Cart
+                Clear cart
               </button>
             </div>
             {items.map((item) => (
@@ -95,23 +102,36 @@ export default function Cart() {
                     )}
                     <div>
                       <h2 className="font-semibold text-slate-900">{item.product.name}</h2>
+                      <p className="text-sm text-slate-500">
+                        Rs {Number(item.product?.price ?? 0).toLocaleString()} each
+                      </p>
                       <p className="text-sm font-semibold text-teal-700">
-                        Rs {(Number(item.product?.price ?? 0) * getQty(item)).toLocaleString()}
+                        Rs {Number(item.lineTotal ?? 0).toLocaleString()}
                       </p>
                       <div className="mt-2 flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => updateQty(item, getQty(item) - 1)}
-                          className="h-8 w-8 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
+                          onClick={() => {
+                            const next = Math.max(1, item.quantity - 1);
+                            updateQtyMutation.mutate({ productId: item.product._id, quantity: next });
+                          }}
+                          disabled={item.quantity <= 1 || updateQtyMutation.isPending}
+                          className="h-8 w-8 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
                           aria-label={`Decrease quantity for ${item.product.name}`}
                         >
                           -
                         </button>
-                        <span className="min-w-8 text-center text-sm font-semibold text-slate-900">{getQty(item)}</span>
+                        <span className="min-w-8 text-center text-sm font-semibold text-slate-900">{item.quantity}</span>
                         <button
                           type="button"
-                          onClick={() => updateQty(item, getQty(item) + 1)}
-                          className="h-8 w-8 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
+                          onClick={() => {
+                            updateQtyMutation.mutate({
+                              productId: item.product._id,
+                              quantity: item.quantity + 1,
+                            });
+                          }}
+                          disabled={updateQtyMutation.isPending}
+                          className="h-8 w-8 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
                           aria-label={`Increase quantity for ${item.product.name}`}
                         >
                           +
@@ -139,14 +159,15 @@ export default function Cart() {
           </div>
 
           <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-24">
-            <h2 className="text-2xl font-semibold text-slate-900">Order Summary</h2>
+            <h2 className="text-2xl font-semibold text-slate-900">Order summary</h2>
+            <p className="mt-1 text-xs text-slate-500">{items.length} product line(s)</p>
             <div className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-slate-600 font-medium">Subtotal</span>
+                <span className="font-medium text-slate-600">Subtotal</span>
                 <span className="font-semibold text-slate-900">Rs {subtotal.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-600 font-medium">Shipping</span>
+                <span className="font-medium text-slate-600">Shipping</span>
                 <span className="font-semibold text-green-700">FREE</span>
               </div>
             </div>
@@ -164,10 +185,10 @@ export default function Cart() {
               disabled={!canProceed}
               className="mt-6 w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Proceed to Checkout
+              Place order & pay
             </button>
-            <Link to="/" className="mt-3 block text-center text-sm font-medium text-slate-600 hover:text-slate-900">
-              Continue Shopping
+            <Link to={shopLink} className="mt-3 block text-center text-sm font-medium text-slate-600 hover:text-slate-900">
+              Add more products
             </Link>
           </aside>
         </div>

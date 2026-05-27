@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { clearAuth, getStoredUser } from '../api/auth.js';
 import { getMyWallet } from '../api/user.js';
+import { getCart } from '../api/cart.js';
 
 const DashboardIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
@@ -34,8 +35,15 @@ const LevelItemIcon = () => (
   </svg>
 );
 
+const CartIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5 shrink-0">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+  </svg>
+);
+
 const sidebarLinks = [
   { to: '/user/my-plan', label: 'My Plan', icon: '🛍️' },
+  { to: '/user/cart', label: 'Cart', icon: <CartIcon /> },
   { to: '/user/ekyc', label: 'eKYC', icon: '📋' },
   { to: '/user/team', label: 'My Team', icon: <TeamIcon /> },
   { to: '/user/binary-tree', label: 'Binary Tree', icon: '🌳' },
@@ -77,7 +85,12 @@ export default function UserLayout() {
     queryKey: ['user-wallet'],
     queryFn: getMyWallet,
   });
+  const { data: cartPayload } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCart,
+  });
   const walletBalance = Number(walletPayload?.data?.balance ?? 0);
+  const cartCount = cartPayload?.data?.totalItems ?? 0;
 
   return (
     <div className="flex min-h-[calc(100vh-0px)] bg-slate-50">
@@ -226,6 +239,20 @@ export default function UserLayout() {
           <div className="flex-1 lg:flex-none" />
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <Link
+              to="/user/cart"
+              className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+              title="Cart"
+              aria-label="Open cart"
+            >
+              <CartIcon />
+              {cartCount > 0 && (
+                <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-500 px-1 text-[10px] font-bold text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
             {/* Wallet balance */}
             <Link
               to="/user/wallet"

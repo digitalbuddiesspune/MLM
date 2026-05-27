@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useMemo } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
 import { getMyWallet, getMyTransactions, getMyTeam } from '../../api/user.js';
+import { getCart } from '../../api/cart.js';
 import { formatBinaryMatchingDetail } from '../../utils/ledgerDisplay.js';
 
 const DashboardIcon = () => (
@@ -14,6 +16,12 @@ const DashboardIcon = () => (
 export default function Dashboard() {
   const [copied, setCopied] = useState(false);
   const user = getStoredUser();
+
+  const { data: cartPayload } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCart,
+  });
+  const cartCount = cartPayload?.data?.totalItems ?? 0;
 
   const [walletQuery, transactionsQuery, teamQuery] = useQueries({
     queries: [
@@ -146,6 +154,48 @@ export default function Dashboard() {
             </>
           )}
         </button>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          to="/user/my-plan"
+          className="flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50/80 p-4 shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-teal-600 text-lg text-white">🛍️</span>
+          <div>
+            <p className="font-semibold text-slate-900">Browse plans</p>
+            <p className="text-xs text-slate-600">View all products & add to cart</p>
+          </div>
+        </Link>
+        <Link
+          to="/user/cart"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+        >
+          <span className="relative flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900 text-lg text-white">
+            🛒
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-500 px-1 text-[10px] font-bold text-white">
+                {cartCount}
+              </span>
+            )}
+          </span>
+          <div>
+            <p className="font-semibold text-slate-900">My cart</p>
+            <p className="text-xs text-slate-600">
+              {cartCount > 0 ? `${cartCount} item(s) — checkout` : 'Cart is empty'}
+            </p>
+          </div>
+        </Link>
+        <Link
+          to="/user/wallet"
+          className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm transition hover:border-emerald-300"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-600 text-lg text-white">💰</span>
+          <div>
+            <p className="font-semibold text-slate-900">Wallet</p>
+            <p className="text-xs text-slate-600">₹{walletQuery.isLoading ? '…' : walletBalance.toLocaleString()} available</p>
+          </div>
+        </Link>
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

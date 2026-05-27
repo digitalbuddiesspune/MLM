@@ -67,6 +67,7 @@ const router = createBrowserRouter(
         <Route path="level/my-direct" element={<UserMyDirect />} />
         <Route path="level/all-hierarchy" element={<UserAllHierarchy />} />
         <Route path="my-plan" element={<MyPlan />} />
+        <Route path="cart" element={<Cart />} />
         <Route path="profile" element={<Profile />} />
         <Route path="ekyc" element={<Ekyc />} />
         <Route path="binary-tree" element={<BinaryTree />} />

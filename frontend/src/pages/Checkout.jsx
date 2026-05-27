@@ -1,7 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getProductById } from '../api/products.js';
-import { createOrder, verifyOrderPayment } from '../api/orders.js';
+import { createOrder, verifyOrderPayment, createCartCheckout, verifyCartCheckout } from '../api/orders.js';
+import { getCart } from '../api/cart.js';
 import { getStoredUser } from '../api/auth.js';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -29,20 +30,37 @@ export default function Checkout() {
   });
   const [searchParams] = useSearchParams();
   const productId = searchParams.get('productId') ?? '';
+  const fromCart = searchParams.get('fromCart') === '1';
   const user = getStoredUser();
 
   const {
     data: productData,
-    isLoading: loading,
+    isLoading: loadingProduct,
     error: queryError,
   } = useQuery({
     queryKey: ['checkout', 'product', productId],
     queryFn: () => getProductById(productId),
-    enabled: Boolean(productId),
+    enabled: Boolean(productId) && !fromCart,
+  });
+
+  const {
+    data: cartPayload,
+    isLoading: loadingCart,
+    error: cartError,
+  } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCart,
+    enabled: fromCart,
   });
 
   const product = productData?.data?.product ?? null;
-  const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load product details') : '';
+  const cartItems = cartPayload?.data?.items ?? [];
+  const cartTotal = Number(cartPayload?.data?.totalAmount ?? 0);
+  const error = fromCart
+    ? (cartError ? (cartError.response?.data?.error ?? 'Failed to load cart') : '')
+    : (queryError ? (queryError.response?.data?.error ?? 'Failed to load product details') : '');
+  const loading = fromCart ? loadingCart : loadingProduct;
+  const readyToCheckout = fromCart ? cartItems.length > 0 : Boolean(product);
   const {
     data: addressesData,
     isLoading: loadingAddresses,
@@ -53,7 +71,7 @@ export default function Checkout() {
   const addresses = addressesData?.data?.addresses ?? [];
   const shouldShowAddressForm = addresses.length === 0 || showAddressForm;
   const selectedAddress = addresses.find((item) => item._id === selectedAddressId) ?? addresses[0] ?? null;
-  const totalAmount = Number(product?.price ?? 0);
+  const totalAmount = fromCart ? cartTotal : Number(product?.price ?? 0);
 
   const addAddressMutation = useMutation({
     mutationFn: createMyAddress,
@@ -90,17 +108,74 @@ export default function Checkout() {
     document.body.appendChild(script);
   });
 
-  const handleBuyPlan = async () => {
-    if (!product?._id) return;
+  const afterPaymentSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['cart'] });
+    queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
+    queryClient.invalidateQueries({ queryKey: ['user', 'renewal-orders'] });
+    queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
+    setPaymentMessage('Payment successful. Your order has been placed.');
+    setTimeout(() => {
+      navigate('/user/my-plan?purchase=success');
+    }, 700);
+  };
+
+  const handlePlaceOrder = async () => {
     if (!selectedAddress) {
-      setPaymentMessage('Please add/select address before buying plan.');
+      setPaymentMessage('Please add or select a delivery address before placing your order.');
       return;
     }
+    if (fromCart && cartItems.length === 0) {
+      setPaymentMessage('Your cart is empty.');
+      return;
+    }
+    if (!fromCart && !product?._id) return;
+
     setPaying(true);
     setPaymentMessage('');
     try {
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error('Failed to load Razorpay SDK');
+
+      if (fromCart) {
+        const created = await createCartCheckout();
+        const pendingCartPaymentId = created?.data?.pendingCartPaymentId;
+        const razorpayOrder = created?.data?.razorpayOrder;
+        const razorpayKeyId = created?.data?.razorpayKeyId;
+        if (!pendingCartPaymentId || !razorpayOrder || !razorpayKeyId) {
+          throw new Error('Cart checkout initialization failed');
+        }
+
+        const options = {
+          key: razorpayKeyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: 'Amruta Wellness',
+          description: `Cart order (${cartItems.length} item line(s))`,
+          order_id: razorpayOrder.id,
+          prefill: {
+            name: user?.name ?? '',
+            email: user?.email ?? '',
+            contact: user?.mobile ?? '',
+          },
+          theme: { color: '#0f766e' },
+          handler: async (response) => {
+            await verifyCartCheckout({
+              pendingCartPaymentId,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            afterPaymentSuccess();
+          },
+        };
+
+        const paymentObject = new window.Razorpay(options);
+        paymentObject.on('payment.failed', () => {
+          setPaymentMessage('Payment failed. Please try again.');
+        });
+        paymentObject.open();
+        return;
+      }
 
       const created = await createOrder(product._id);
       const backendOrder = created?.data?.order;
@@ -131,14 +206,7 @@ export default function Checkout() {
             razorpayPaymentId: response.razorpay_payment_id,
             razorpaySignature: response.razorpay_signature,
           });
-          queryClient.invalidateQueries({ queryKey: ['cart'] });
-          queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
-          queryClient.invalidateQueries({ queryKey: ['user', 'renewal-orders'] });
-          queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
-          setPaymentMessage('Payment successful. Your order has been placed.');
-          setTimeout(() => {
-            navigate('/user/my-plan?purchase=success');
-          }, 700);
+          afterPaymentSuccess();
         },
       };
 
@@ -213,23 +281,32 @@ export default function Checkout() {
     <section className="mx-auto max-w-5xl px-4 py-6 sm:px-5 lg:px-6">
       <h1 className="text-2xl font-bold text-slate-900">Checkout</h1>
 
-      {!productId && (
+      {!fromCart && !productId && (
         <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700">
-          No product selected. Please go back and choose a product.
+          No product selected.{' '}
+          <Link to="/user/my-plan" className="font-semibold underline">Browse products</Link> or{' '}
+          <Link to="/user/cart" className="font-semibold underline">open your cart</Link>.
         </div>
       )}
 
-      {productId && loading && (
+      {fromCart && !loading && cartItems.length === 0 && (
+        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700">
+          Your cart is empty.{' '}
+          <Link to="/user/my-plan" className="font-semibold underline">Add products</Link>
+        </div>
+      )}
+
+      {loading && (
         <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 text-slate-500">
-          Loading product...
+          {fromCart ? 'Loading cart...' : 'Loading product...'}
         </div>
       )}
 
-      {productId && error && (
+      {error && (
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>
       )}
 
-      {product && (
+      {readyToCheckout && !loading && (
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.65fr_0.95fr]">
           <div className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -348,25 +425,44 @@ export default function Checkout() {
           </div>
 
           <aside className="h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-20">
-            <h2 className="text-xl font-bold text-slate-900">Order Summary</h2>
+            <h2 className="text-xl font-bold text-slate-900">Order summary</h2>
 
-            <div className="mt-3 flex items-center gap-2.5 rounded-lg bg-slate-50 p-2.5">
-              {product.imageUrl ? (
-                <img src={product.imageUrl} alt={product.name} className="h-12 w-12 rounded-md object-cover" />
+            <div className="mt-3 max-h-52 space-y-2 overflow-y-auto">
+              {fromCart ? (
+                cartItems.map((item) => (
+                  <div key={item.product._id} className="flex items-center gap-2.5 rounded-lg bg-slate-50 p-2.5">
+                    {item.product.imageUrl ? (
+                      <img src={item.product.imageUrl} alt={item.product.name} className="h-10 w-10 rounded-md object-cover" />
+                    ) : (
+                      <div className="h-10 w-10 rounded-md bg-slate-200" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold text-slate-900">{item.product.name}</p>
+                      <p className="text-xs text-slate-600">Qty: {item.quantity}</p>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-900">Rs {Number(item.lineTotal ?? 0).toLocaleString()}</p>
+                  </div>
+                ))
               ) : (
-                <div className="h-12 w-12 rounded-md bg-slate-200" />
+                <div className="flex items-center gap-2.5 rounded-lg bg-slate-50 p-2.5">
+                  {product.imageUrl ? (
+                    <img src={product.imageUrl} alt={product.name} className="h-12 w-12 rounded-md object-cover" />
+                  ) : (
+                    <div className="h-12 w-12 rounded-md bg-slate-200" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-slate-900">{product.name}</p>
+                    <p className="text-xs text-slate-600">Qty: 1</p>
+                  </div>
+                  <p className="ml-auto text-xs font-semibold text-slate-900">Rs {Number(product.price ?? 0).toLocaleString()}</p>
+                </div>
               )}
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-slate-900">{product.name}</p>
-                <p className="text-xs text-slate-600">Qty: 1</p>
-              </div>
-              <p className="ml-auto text-xs font-semibold text-slate-900">Rs {Number(product.price ?? 0).toLocaleString()}</p>
             </div>
 
             <div className="mt-3 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Subtotal</span>
-                <span className="font-semibold text-slate-900">Rs {Number(product.price ?? 0).toLocaleString()}</span>
+                <span className="font-semibold text-slate-900">Rs {Number(totalAmount).toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Shipping</span>
@@ -385,24 +481,29 @@ export default function Checkout() {
 
             <button
               type="button"
-              onClick={handleBuyPlan}
+              onClick={handlePlaceOrder}
               disabled={paying || !selectedAddress}
               className="mt-4 w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {paying ? 'Processing...' : 'Buy Plan'}
+              {paying ? 'Processing...' : fromCart ? 'Place order & pay' : 'Buy plan'}
             </button>
             {!selectedAddress && (
-              <p className="mt-2 text-xs text-red-600">Add address to enable Buy Plan.</p>
+              <p className="mt-2 text-xs text-red-600">Add an address to place your order.</p>
             )}
             {paymentMessage && <p className="mt-2 text-xs text-slate-600">{paymentMessage}</p>}
           </aside>
         </div>
       )}
 
-      <div className="mt-4">
-        <Link to="/business-plan" className="text-xs font-medium text-teal-600 hover:text-teal-700">
+      <div className="mt-4 flex flex-wrap gap-4">
+        <Link to="/user/my-plan" className="text-xs font-medium text-teal-600 hover:text-teal-700">
           ← Back to products
         </Link>
+        {fromCart && (
+          <Link to="/user/cart" className="text-xs font-medium text-slate-600 hover:text-slate-900">
+            Edit cart
+          </Link>
+        )}
       </div>
     </section>
   );

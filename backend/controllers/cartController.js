@@ -25,7 +25,7 @@ function getCartSelector(req) {
   return { guestIp: getClientIp(req) };
 }
 
-async function getOrCreateCart(req) {
+export async function getOrCreateCart(req) {
   if (req.userId) {
     const guestId = getGuestId(req);
     const guestIp = getClientIp(req);
@@ -95,7 +95,7 @@ async function getOrCreateCart(req) {
   return guestCart;
 }
 
-async function populateAndFormatCart(cartId) {
+export async function populateAndFormatCart(cartId) {
   const cart = await Cart.findById(cartId)
     .populate({
       path: 'items.productId',
@@ -182,6 +182,37 @@ export async function clearCart(req, res, next) {
   try {
     const cart = await getOrCreateCart(req);
     cart.items = [];
+    await cart.save();
+
+    const data = await populateAndFormatCart(cart._id);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateCartItem(req, res, next) {
+  try {
+    const { productId } = req.params;
+    const { quantity } = req.body ?? {};
+
+    if (!productId || !mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ success: false, error: 'Valid productId is required' });
+    }
+
+    const parsedQuantity = Math.max(1, parseInt(quantity, 10) || 1);
+    const product = await Product.findById(productId).select('_id isActive').lean();
+    if (!product || !product.isActive) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const cart = await getOrCreateCart(req);
+    const existing = cart.items.find((item) => String(item.productId) === String(productId));
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Product not in cart' });
+    }
+
+    existing.quantity = parsedQuantity;
     await cart.save();
 
     const data = await populateAndFormatCart(cart._id);
