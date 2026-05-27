@@ -45,43 +45,43 @@ function BinaryMemberNodeImpl({ data }) {
 
   return (
     <div
-      className={`relative min-w-[180px] max-w-[200px] rounded-2xl border bg-gradient-to-br px-3 py-2.5 shadow-xl transition-transform duration-200 hover:scale-[1.02] ${
+      className={`relative min-w-[190px] max-w-[220px] rounded-xl border bg-white px-3 py-2.5 shadow-sm transition ${
         isYou
-          ? 'border-cyan-400/90 from-slate-900/95 to-cyan-950/80 ring-2 ring-cyan-400/60'
+          ? 'border-blue-400 ring-2 ring-blue-100'
           : isFocused
-            ? 'border-violet-400/90 from-slate-900/95 to-violet-950/70 ring-2 ring-violet-400/55'
+            ? 'border-violet-400 ring-2 ring-violet-100'
             : active
-              ? 'border-emerald-500/40 from-slate-900/95 to-emerald-950/40'
-              : 'border-slate-600/50 from-slate-900/95 to-slate-950/80'
+              ? 'border-emerald-300'
+              : 'border-slate-200'
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!h-2 !w-2 !border-0 !bg-slate-500" />
-      <Handle type="source" position={Position.Bottom} className="!h-2 !w-2 !border-0 !bg-slate-500" />
+      <Handle type="target" position={Position.Top} className="!h-2 !w-2 !border-0 !bg-slate-300" />
+      <Handle type="source" position={Position.Bottom} className="!h-2 !w-2 !border-0 !bg-slate-300" />
 
       <div className="flex items-start gap-2.5">
         <div
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-inner ${
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
             active
-              ? 'bg-gradient-to-br from-emerald-400 to-teal-600'
-              : 'bg-gradient-to-br from-slate-500 to-slate-700'
+              ? 'bg-emerald-500'
+              : 'bg-slate-500'
           }`}
         >
           {initials(name)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <p className="truncate text-sm font-semibold text-slate-50">{name}</p>
+            <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
             {isYou && (
-              <span className="shrink-0 rounded-full bg-cyan-500/20 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-cyan-200">
+              <span className="shrink-0 rounded-full bg-blue-50 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-blue-700">
                 You
               </span>
             )}
           </div>
-          <p className="mt-0.5 font-mono text-[10px] text-slate-400">ID {refNum ?? '—'}</p>
-          <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-slate-300">
-            {pk ? <span className="text-slate-200">{String(pk)}</span> : <span className="text-slate-500">No package</span>}
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">ID {refNum ?? '—'}</p>
+          <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-slate-600">
+            {pk ? <span className="text-slate-700">{String(pk)}</span> : <span className="text-slate-400">No package</span>}
             {side ? (
-              <span className="ml-1.5 rounded bg-slate-800/80 px-1 py-px text-[9px] font-semibold uppercase text-amber-200">
+              <span className="ml-1.5 rounded bg-slate-100 px-1 py-px text-[9px] font-semibold uppercase text-slate-700">
                 {side}
               </span>
             ) : null}
@@ -89,13 +89,13 @@ function BinaryMemberNodeImpl({ data }) {
           <div className="mt-1.5 flex flex-wrap gap-1">
             <span
               className={`rounded-full px-1.5 py-px text-[9px] font-bold uppercase ${
-                status === 'active' ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-700/60 text-slate-300'
+                status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
               }`}
             >
               {status}
             </span>
             {chip.map((t) => (
-              <span key={t} className="rounded-full bg-slate-800/90 px-1.5 py-px text-[9px] font-medium text-slate-200">
+              <span key={t} className="rounded-full bg-slate-100 px-1.5 py-px text-[9px] font-medium text-slate-700">
                 {t}
               </span>
             ))}
@@ -103,21 +103,21 @@ function BinaryMemberNodeImpl({ data }) {
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-700/50 pt-2">
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
         {canCollapse ? (
           <button
             type="button"
-            className="nodrag nopan rounded-lg bg-slate-800/90 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-700"
+            className="nodrag nopan rounded-md border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"
             onClick={() => ui.toggleCollapseId(id)}
           >
             {isCollapsed ? 'Expand' : 'Collapse'}
           </button>
         ) : (
-          <span className="text-[10px] text-slate-500">Leaf</span>
+          <span className="text-[10px] text-slate-400">Leaf</span>
         )}
         <button
           type="button"
-          className="nodrag nopan rounded-lg bg-violet-600/30 px-2 py-1 text-[10px] font-semibold text-violet-100 hover:bg-violet-600/45"
+          className="nodrag nopan rounded-md bg-violet-50 px-2 py-1 text-[10px] font-semibold text-violet-700 hover:bg-violet-100"
           onClick={() => ui.setSubtreeAnchor(id)}
         >
           Subtree

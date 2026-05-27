@@ -41,16 +41,16 @@ function BinaryTreeCanvas({ nodes, edges, revision }) {
         maxZoom={2}
         attributionPosition="bottom-left"
         proOptions={{ hideAttribution: true }}
-        className="!bg-transparent"
+        className="!bg-white"
       >
         <FitViewHelper revision={revision} />
-        <Background color="#334155" gap={22} variant="dots" />
-        <Controls className="!overflow-hidden !rounded-xl !border !border-slate-700/70 !bg-slate-900/95 !shadow-lg [&_button]:!fill-slate-200" />
+        <Background color="#e2e8f0" gap={22} variant="dots" />
+        <Controls className="!overflow-hidden !rounded-xl !border !border-slate-200 !bg-white !shadow-sm [&_button]:!fill-slate-600" />
         <MiniMap
-          className="!overflow-hidden !rounded-xl !border !border-slate-700/70 !bg-slate-900/95"
+          className="!overflow-hidden !rounded-xl !border !border-slate-200 !bg-white"
           nodeStrokeWidth={2}
-          maskColor="rgba(15,23,42,0.78)"
-          nodeColor={() => '#10b981'}
+          maskColor="rgba(226,232,240,0.72)"
+          nodeColor={() => '#22c55e'}
           pannable
           zoomable
         />
@@ -185,19 +185,19 @@ export default function BinaryTree() {
   const revision = `${layoutRev}-${nodes?.length ?? 0}-${edges?.length ?? 0}`;
 
   return (
-    <div className="min-h-screen space-y-5 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-8 text-slate-100 sm:px-6 lg:max-w-[1600px]">
+    <div className="min-h-screen space-y-5 px-4 py-6 sm:px-6 lg:max-w-[1500px]">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-          Binary genealogy
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+          Binary Tree
         </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-400">
-          Placement uses sponsor-root BFS spillover — each parent accepts one left + one right child. Highlights show
-          your position; search by referral ID to zoom the canvas.
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
+          A simple left-right placement view of your team. Use search to jump to a member, and click any node to focus
+          on that subtree.
         </p>
       </header>
 
       {/* Dashboard */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
           ['Total team', dash?.totals?.totalTeam ?? '—'],
           ['Left BV', dash?.totals?.leftBusinessVolume?.toLocaleString?.() ?? '0'],
@@ -208,22 +208,22 @@ export default function BinaryTree() {
         ].map(([k, v]) => (
           <div
             key={k}
-            className="rounded-2xl border border-slate-800/70 bg-gradient-to-br from-slate-900 to-slate-950 p-4 shadow-lg shadow-black/30"
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{k}</p>
-            <p className="mt-1 text-xl font-semibold text-white">{v}</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">{v}</p>
           </div>
         ))}
       </section>
 
       {dash?.recentJoins?.length > 0 && (
-        <section className="rounded-2xl border border-slate-800/80 bg-slate-900/75 p-4 shadow-inner shadow-black/20">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Recent joins</h2>
-          <ul className="mt-3 divide-y divide-slate-800/80">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Recent joins</h2>
+          <ul className="mt-3 divide-y divide-slate-100">
             {dash.recentJoins.map((j) => (
               <li key={j.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                <span className="font-medium text-slate-100">{j.name}</span>
-                <span className="font-mono text-xs text-slate-400">#{j.referralNumber}</span>
+                <span className="font-medium text-slate-800">{j.name}</span>
+                <span className="font-mono text-xs text-slate-500">#{j.referralNumber}</span>
                 <span className="text-[11px] text-slate-500">
                   {(j.joinedAt && new Date(j.joinedAt).toLocaleDateString()) || ''}
                 </span>
@@ -234,14 +234,14 @@ export default function BinaryTree() {
       )}
 
       {/* Toolbar */}
-      <section className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-4 shadow-lg shadow-black/25">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-end gap-4">
-          <label className="flex flex-col text-xs font-medium text-slate-400">
+          <label className="flex flex-col text-xs font-medium text-slate-600">
             Load depth
             <select
               value={depth}
               onChange={(e) => setDepth(Number(e.target.value))}
-              className="mt-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+              className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
             >
               {[6, 8, 10, 12, 14, 16, 20, 30, 50].map((d) => (
                 <option key={d} value={d}>{d}</option>
@@ -250,30 +250,30 @@ export default function BinaryTree() {
           </label>
 
           <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="flex flex-1 flex-col text-xs font-medium text-slate-400">
+            <label className="flex flex-1 flex-col text-xs font-medium text-slate-600">
               Search by referral ID
               <div className="mt-1 flex gap-2">
                 <input
                   value={jumpRef}
                   onChange={(e) => setJumpRef(e.target.value)}
                   placeholder="e.g. 100101"
-                  className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm text-white placeholder:text-slate-600"
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 placeholder:text-slate-400"
                 />
                 <button
                   type="button"
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                   onClick={handleJump}
                 >
                   Jump
                 </button>
               </div>
-              {jumpHint ? <p className="mt-1 text-[11px] text-rose-400">{jumpHint}</p> : null}
+              {jumpHint ? <p className="mt-1 text-[11px] text-rose-600">{jumpHint}</p> : null}
             </label>
           </div>
 
           <button
             type="button"
-            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800/80"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             onClick={() => {
               resetView();
               setJumpRef('');
@@ -284,7 +284,7 @@ export default function BinaryTree() {
           {subtreeAnchor && (
             <button
               type="button"
-              className="rounded-lg bg-violet-600/70 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500/80"
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
               onClick={() => {
                 setSubtreeAnchor(null);
                 setLayoutRev((x) => x + 1);
@@ -297,17 +297,17 @@ export default function BinaryTree() {
 
         {/* Breadcrumb */}
         {genealogyQuery.data?.length > 1 && jumpHighlightId && (
-          <nav className="mt-4 flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+          <nav className="mt-4 flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
             <span className="mr-2 text-slate-500">Path</span>
             {genealogyQuery.data.map((c, i) => (
               <span key={c._id} className="flex items-center gap-1">
-                {i > 0 ? <span className="text-slate-600">/</span> : null}
+                {i > 0 ? <span className="text-slate-400">/</span> : null}
                 <button
                   type="button"
-                  className="rounded px-2 py-0.5 hover:bg-slate-800 hover:text-emerald-200"
+                  className="rounded px-2 py-0.5 hover:bg-slate-100"
                   onClick={() => subtreeAnchorWrapped(c._id)}
                 >
-                  <span className="font-semibold text-slate-100">{c.name}</span>{' '}
+                  <span className="font-semibold text-slate-800">{c.name}</span>{' '}
                   <span className="font-mono text-[10px] text-slate-500">#{c.referralNumber ?? '—'}</span>
                 </button>
               </span>
@@ -317,23 +317,23 @@ export default function BinaryTree() {
       </section>
 
       {/* Flow */}
-      <section className="overflow-x-auto rounded-2xl border border-slate-800/70 bg-gradient-to-b from-slate-900 via-slate-950 to-black/40 p-2 shadow-2xl shadow-black/35 sm:p-4">
+      <section className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:p-4">
         {treeQuery.isLoading && (
           <div className="flex items-center justify-center py-28 text-sm text-slate-500">
-            Hydrating genealogy…
+            Loading tree...
           </div>
         )}
         {dashQuery.isLoading && !dash && (
-          <p className="mb-4 text-center text-xs text-slate-500">Refreshing dashboard totals…</p>
+          <p className="mb-4 text-center text-xs text-slate-500">Refreshing metrics...</p>
         )}
         {error ? (
-          <div className="rounded-xl border border-red-900/70 bg-red-950/35 px-4 py-6 text-center text-sm text-red-300">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-700">
             {typeof error === 'string' ? error : 'Something went wrong'}
           </div>
         ) : null}
         {!treeQuery.isLoading && !tree && (
           <p className="py-16 text-center text-sm text-slate-500">
-            No placement data yet — register team members under your referral to populate the lattice.
+            No placement data yet. Register team members using your referral code.
           </p>
         )}
         {!treeQuery.isLoading && tree && nodes.length > 0 && (
