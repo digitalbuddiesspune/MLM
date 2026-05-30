@@ -13,8 +13,9 @@ import { sensitiveMutationLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
-/* Mutations: admin-only (validators inside the services prevent self-parenting / cycles). */
-router.post('/place', sensitiveMutationLimiter, requireAuth, requireAdmin, postPlace);
+/* Placement: admin or sponsor owner. */
+router.post('/place', sensitiveMutationLimiter, requireAuth, postPlace);
+/* Admin-only mutations. */
 router.post('/manual-place', sensitiveMutationLimiter, requireAuth, requireAdmin, postManualPlace);
 router.post('/drag-drop', sensitiveMutationLimiter, requireAuth, requireAdmin, postDragDrop);
 

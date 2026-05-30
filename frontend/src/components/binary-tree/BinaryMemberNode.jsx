@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { useBinaryTreeUi } from '../../context/BinaryTreeUiContext.jsx';
 import { normId, orderedChildren } from '../../utils/binaryTreeLayout.js';
@@ -23,25 +23,11 @@ function BinaryMemberNodeImpl({ data }) {
   const refNum = member?.referralNumber;
   const side = member?.placementSide ?? null;
   const active = !!member?.isActive;
-  const pk = member?.package ?? member?.rank ?? null;
-  const bl = Number(member?.binaryLeftCount ?? 0);
-  const br = Number(member?.binaryRightCount ?? 0);
-  const income = Number(member?.binaryIncome ?? member?.matchingIncome ?? 0);
   const status = typeof member?.status === 'string' ? member.status : active ? 'active' : 'inactive';
 
   const kids = orderedChildren(member);
   const canCollapse = kids.length > 0;
   const isCollapsed = ui.collapseHas(id);
-
-  const chip = useMemo(
-    () =>
-      [
-        `L ${bl}`,
-        `R ${br}`,
-        income > 0 ? `₹${income.toLocaleString()}` : null,
-      ].filter(Boolean),
-    [bl, br, income]
-  );
 
   return (
     <div
@@ -78,14 +64,9 @@ function BinaryMemberNodeImpl({ data }) {
             )}
           </div>
           <p className="mt-0.5 font-mono text-[10px] text-slate-500">ID {refNum ?? '—'}</p>
-          <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-slate-600">
-            {pk ? <span className="text-slate-700">{String(pk)}</span> : <span className="text-slate-400">No package</span>}
-            {side ? (
-              <span className="ml-1.5 rounded bg-slate-100 px-1 py-px text-[9px] font-semibold uppercase text-slate-700">
-                {side}
-              </span>
-            ) : null}
-          </p>
+          {side ? (
+            <p className="mt-0.5 text-[10px] font-semibold uppercase text-slate-500">{side}</p>
+          ) : null}
           <div className="mt-1.5 flex flex-wrap gap-1">
             <span
               className={`rounded-full px-1.5 py-px text-[9px] font-bold uppercase ${
@@ -94,11 +75,6 @@ function BinaryMemberNodeImpl({ data }) {
             >
               {status}
             </span>
-            {chip.map((t) => (
-              <span key={t} className="rounded-full bg-slate-100 px-1.5 py-px text-[9px] font-medium text-slate-700">
-                {t}
-              </span>
-            ))}
           </div>
         </div>
       </div>

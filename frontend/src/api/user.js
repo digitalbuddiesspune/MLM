@@ -34,6 +34,11 @@ export async function getBinaryGenealogy(memberId, params = {}) {
   return data;
 }
 
+export async function placeMyReferralInTree(payload) {
+  const { data } = await api.post('/tree/place', payload);
+  return data;
+}
+
 export async function getMyTransactions() {
   const { data } = await api.get('/user/transactions');
   return data;

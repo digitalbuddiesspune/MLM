@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
-import { getMyWallet, getMyTransactions, getMyTeam } from '../../api/user.js';
+import { getMyWallet, getMyTransactions, getMyTeam, placeMyReferralInTree } from '../../api/user.js';
 import { getCart } from '../../api/cart.js';
 import { formatBinaryMatchingDetail } from '../../utils/ledgerDisplay.js';
 
@@ -14,7 +14,10 @@ const DashboardIcon = () => (
 );
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const [sideByUserId, setSideByUserId] = useState({});
+  const [placeMessage, setPlaceMessage] = useState('');
   const user = getStoredUser();
 
   const { data: cartPayload } = useQuery({
@@ -47,6 +50,10 @@ export default function Dashboard() {
   const walletBalance = Number(walletQuery.data?.data?.balance ?? 0);
   const rank = walletQuery.data?.data?.rank ?? user?.rank ?? 'Beginner';
   const teamSize = Number(teamQuery.data?.data?.users?.length ?? 0);
+  const unplacedReferrals = useMemo(
+    () => (teamQuery.data?.data?.users ?? []).filter((u) => !u.parentId),
+    [teamQuery.data]
+  );
 
   const referralCode =
     walletQuery.data?.data?.referralNumber != null
@@ -84,6 +91,24 @@ export default function Dashboard() {
     }
     return null;
   }, [transactionsQuery.data]);
+
+  const placeMutation = useMutation({
+    mutationFn: ({ userId, side }) =>
+      placeMyReferralInTree({
+        userId,
+        sponsorId: user?._id,
+        ...(side ? { side } : {}),
+      }),
+    onSuccess: () => {
+      setPlaceMessage('User placed in binary tree successfully.');
+      queryClient.invalidateQueries({ queryKey: ['user-dashboard', 'team'] });
+      queryClient.invalidateQueries({ queryKey: ['binary-tree-flow'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
+    },
+    onError: (err) => {
+      setPlaceMessage(err?.response?.data?.error ?? 'Placement failed');
+    },
+  });
 
   const handleCopyReferralId = async () => {
     if (!referralCode) return;
@@ -227,6 +252,61 @@ export default function Dashboard() {
             <p className="mt-0.5 text-xs text-slate-500">{sub}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Place referred users in binary tree</h2>
+        <p className="mt-1 text-xs text-slate-600">
+          You can place only users who registered using your referral code.
+        </p>
+
+        {placeMessage ? (
+          <p className={`mt-3 rounded-md px-3 py-2 text-xs ${placeMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {placeMessage}
+          </p>
+        ) : null}
+
+        {unplacedReferrals.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">No pending referred users to place.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {unplacedReferrals.map((member) => (
+              <div
+                key={member._id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-medium text-slate-900">{member.name}</p>
+                  <p className="text-xs text-slate-500">{member.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={sideByUserId[member._id] ?? ''}
+                    onChange={(e) => {
+                      setSideByUserId((prev) => ({ ...prev, [member._id]: e.target.value }));
+                    }}
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                  >
+                    <option value="">Auto</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlaceMessage('');
+                      placeMutation.mutate({ userId: member._id, side: sideByUserId[member._id] ?? '' });
+                    }}
+                    disabled={placeMutation.isPending}
+                    className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    Place
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

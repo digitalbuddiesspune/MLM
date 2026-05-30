@@ -11,6 +11,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
 import {
+  placeTreeUser,
   dragDropTreeUser,
   getTreeById,
   manualPlaceTreeUser,
@@ -129,6 +130,11 @@ export default function AdminTreeManage() {
   const [rootId, setRootId] = useState(user?._id ?? '');
   const [rootDraft, setRootDraft] = useState(user?._id ?? '');
   const [sideDraft, setSideDraft] = useState('left');
+  const [placeForm, setPlaceForm] = useState({
+    userId: '',
+    sponsorId: '',
+    side: '',
+  });
   const [status, setStatus] = useState('');
 
   const { data, isLoading, error } = useQuery({
@@ -168,6 +174,18 @@ export default function AdminTreeManage() {
     },
     onError: (err) => {
       setStatus(err?.response?.data?.error ?? 'Side update failed');
+    },
+  });
+
+  const placeMutation = useMutation({
+    mutationFn: placeTreeUser,
+    onSuccess: () => {
+      setStatus('User placed in binary tree.');
+      refresh();
+      setPlaceForm((prev) => ({ ...prev, userId: '', side: '' }));
+    },
+    onError: (err) => {
+      setStatus(err?.response?.data?.error ?? 'Placement failed');
     },
   });
 
@@ -284,6 +302,48 @@ export default function AdminTreeManage() {
               onChange={(e) => dispatch(setAutoPlacementEnabled(e.target.checked))}
             />
           </label>
+
+          <div className="rounded-lg border border-slate-200 p-3">
+            <p className="text-xs font-bold text-slate-800">Place unplaced user</p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Admin can place any registered user under any sponsor.
+            </p>
+            <input
+              value={placeForm.userId}
+              onChange={(e) => setPlaceForm((prev) => ({ ...prev, userId: e.target.value }))}
+              placeholder="User Mongo ID"
+              className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-xs"
+            />
+            <input
+              value={placeForm.sponsorId}
+              onChange={(e) => setPlaceForm((prev) => ({ ...prev, sponsorId: e.target.value }))}
+              placeholder={`Sponsor Mongo ID (default root: ${rootId || '—'})`}
+              className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-xs"
+            />
+            <select
+              value={placeForm.side}
+              onChange={(e) => setPlaceForm((prev) => ({ ...prev, side: e.target.value }))}
+              className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-xs"
+            >
+              <option value="">Auto (first available)</option>
+              <option value="left">LEFT</option>
+              <option value="right">RIGHT</option>
+            </select>
+            <button
+              type="button"
+              disabled={placeMutation.isPending || !placeForm.userId.trim()}
+              onClick={() =>
+                placeMutation.mutate({
+                  userId: placeForm.userId.trim(),
+                  sponsorId: (placeForm.sponsorId || rootId).trim(),
+                  ...(placeForm.side ? { side: placeForm.side } : {}),
+                })
+              }
+              className="mt-3 w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {placeMutation.isPending ? 'Placing...' : 'Place User'}
+            </button>
+          </div>
 
           <div className="rounded-lg border border-slate-200 p-3">
             <p className="text-xs font-bold text-slate-800">Selected Node</p>

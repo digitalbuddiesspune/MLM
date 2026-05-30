@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import User from '../models/User.js';
 import {
   placeUserUnderSponsor,
   setPlacementSide,
@@ -31,13 +32,38 @@ export async function postPlace(req, res, next) {
     asObjectId(userId, 'userId');
     asObjectId(sponsorId, 'sponsorId');
 
+    const [actor, candidate] = await Promise.all([
+      User.findById(req.userId).select('_id role').lean(),
+      User.findById(userId).select('_id sponsorId parentId').lean(),
+    ]);
+    if (!actor) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+    if (!candidate) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    if (candidate.parentId) {
+      return res.status(422).json({ success: false, error: 'User is already placed in the binary tree' });
+    }
+
+    const isAdmin = actor.role === 'admin';
+    if (!isAdmin) {
+      const actorId = String(actor._id);
+      if (String(sponsorId) !== actorId) {
+        return res.status(403).json({ success: false, error: 'You can only place users under your own sponsor node' });
+      }
+      if (!candidate.sponsorId || String(candidate.sponsorId) !== actorId) {
+        return res.status(403).json({ success: false, error: 'You can only place users registered with your referral code' });
+      }
+    }
+
     const result = await placeUserUnderSponsor({
       userId,
       sponsorId,
       preferredSide: side ?? null,
       manualPlacement: Boolean(side),
       actorUserId: req.userId,
-      reason: req.body?.reason || 'admin manual placement',
+      reason: req.body?.reason || (isAdmin ? 'admin manual placement' : 'sponsor manual placement'),
     });
     res.status(201).json({ success: true, data: result });
   } catch (err) {

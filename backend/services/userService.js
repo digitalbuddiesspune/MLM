@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
-import { placeUserUnderSponsor } from './placementService.js';
-import { applySponsorJoinEffects, autoActivateEligibleUplines } from './levelService.js';
+import { applySponsorJoinEffects } from './levelService.js';
 import { nextReferralNumber, ensureReferralNumber, FIRST_REFERRAL_NUMBER } from './referralNumberService.js';
 
 const SALT_ROUNDS = 10;
@@ -42,7 +41,7 @@ async function resolveSponsorMongoId(sponsorInput, session) {
 
 /**
  * Registers a new user with minimal fields.
- * If sponsorId is provided, places them in the binary tree under sponsor.
+ * Keeps user UNPLACED in binary tree until sponsor/admin places manually.
  * Sponsor must be specified as numeric referralNumber (digits only).
  * @param {{ name: string, mobile: string, email: string, password: string, sponsorId?: string }} payload
  * @returns {Promise<Object>} Created user (password excluded)
@@ -85,25 +84,15 @@ export async function register(payload) {
           mobile: mobile.trim(),
           email: email?.toLowerCase().trim(),
           password: hashedPassword,
+          sponsorId: normalizedSponsorId,
+          directSponsor: normalizedSponsorId,
           referralNumber,
         },
       ],
       { session }
     );
 
-    /* Sponsor-centric placement: append directly under sponsor, fill-left-first. */
-    const placementResult = await placeUserUnderSponsor({
-      userId: createdUser._id,
-      sponsorId: normalizedSponsorId,
-      preferredSide: null,
-      manualPlacement: false,
-      session,
-      actorUserId: createdUser._id,
-      reason: 'self-registration',
-    });
-
     await applySponsorJoinEffects(normalizedSponsorId, createdUser._id, session);
-    await autoActivateEligibleUplines(placementResult.placement.parentId, session);
 
     await session.commitTransaction();
 
