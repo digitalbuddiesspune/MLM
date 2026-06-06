@@ -111,6 +111,51 @@ export default function AdminDashboard() {
     { label: 'Payout runs', value: stats?.payoutRunsCount ?? 0, sub: 'Completed', icon: '📋', to: '/admin/payouts' },
   ];
 
+  const orderShortcuts = [
+    {
+      label: "Today's orders",
+      value: stats?.todayOrders ?? 0,
+      sub: 'Paid orders placed today',
+      icon: '📦',
+      to: '/admin/orders?today=1&status=paid',
+    },
+    {
+      label: 'Pending fulfillment',
+      value: stats?.pendingFulfillmentOrders ?? 0,
+      sub: 'Paid, not yet packed',
+      icon: '⏳',
+      to: '/admin/orders?status=paid&fulfillmentStatus=pending',
+    },
+    {
+      label: 'Packed orders',
+      value: stats?.packedOrders ?? 0,
+      sub: 'Ready to ship',
+      icon: '📫',
+      to: '/admin/orders?fulfillmentStatus=packed',
+    },
+    {
+      label: 'Shipped orders',
+      value: stats?.shippedOrders ?? 0,
+      sub: 'In transit',
+      icon: '🚚',
+      to: '/admin/orders?fulfillmentStatus=shipped',
+    },
+    {
+      label: 'Delivered orders',
+      value: stats?.deliveredOrders ?? 0,
+      sub: 'Completed deliveries',
+      icon: '✅',
+      to: '/admin/orders?fulfillmentStatus=delivered',
+    },
+    {
+      label: 'All orders',
+      value: 'View',
+      sub: 'Full order list',
+      icon: '📋',
+      to: '/admin/orders',
+    },
+  ];
+
   return (
     <div> 
       <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
@@ -195,6 +240,37 @@ export default function AdminDashboard() {
             </div>
           </Link>
         ))}
+      </div>
+
+      <div className="mt-8">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Order shortcuts</h2>
+            <p className="mt-0.5 text-sm text-slate-600">Jump to filtered order views for fulfillment.</p>
+          </div>
+          <Link to="/admin/orders" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+            Open orders
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {orderShortcuts.map(({ label, value, sub, icon, to }) => (
+            <Link
+              key={label}
+              to={to}
+              className="flex cursor-pointer items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-teal-200 hover:bg-teal-50/50"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-100 text-2xl">{icon}</span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-slate-900">{label}</p>
+                <p className="text-lg font-semibold text-teal-700">{value}</p>
+                <p className="text-sm text-slate-500">{sub}</p>
+              </div>
+              <svg className="h-5 w-5 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="mt-8 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

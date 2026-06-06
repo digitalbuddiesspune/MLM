@@ -356,14 +356,38 @@ export async function getMyOrders(req, res, next) {
   }
 }
 
+function getTodayRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
 export async function getAdminOrders(req, res, next) {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const status = (req.query.status || '').trim();
+    const fulfillmentStatus = (req.query.fulfillmentStatus || '').trim();
+    const todayOnly = ['1', 'true', 'yes'].includes(String(req.query.today ?? '').toLowerCase());
 
     const filter = {};
     if (status && ['pending', 'paid', 'failed'].includes(status)) filter.status = status;
+    if (fulfillmentStatus && ['pending', 'packed', 'shipped', 'delivered', 'cancelled'].includes(fulfillmentStatus)) {
+      if (fulfillmentStatus === 'pending') {
+        filter.$or = [
+          { fulfillmentStatus: 'pending' },
+          { fulfillmentStatus: { $exists: false } },
+        ];
+      } else {
+        filter.fulfillmentStatus = fulfillmentStatus;
+      }
+    }
+    if (todayOnly) {
+      const { start, end } = getTodayRange();
+      filter.createdAt = { $gte: start, $lt: end };
+    }
 
     const [orders, total] = await Promise.all([
       Order.find(filter)
@@ -428,6 +452,35 @@ export async function getAdminOrders(req, res, next) {
         },
       },
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAdminOrderFulfillment(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { fulfillmentStatus } = req.body ?? {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, error: 'Valid order id is required' });
+    }
+    if (!fulfillmentStatus || !['pending', 'packed', 'shipped', 'delivered', 'cancelled'].includes(fulfillmentStatus)) {
+      return res.status(400).json({ success: false, error: 'Valid fulfillmentStatus is required' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+    if (order.status !== 'paid') {
+      return res.status(400).json({ success: false, error: 'Fulfillment status can only be updated for paid orders' });
+    }
+
+    order.fulfillmentStatus = fulfillmentStatus;
+    await order.save();
+
+    res.json({ success: true, data: { order } });
   } catch (error) {
     next(error);
   }

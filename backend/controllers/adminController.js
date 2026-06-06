@@ -21,6 +21,9 @@ function escapeRegexLiteral(str) {
  */
 export async function getStats(req, res, next) {
   try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const [
       totalUsers,
       activeUsers,
@@ -28,6 +31,11 @@ export async function getStats(req, res, next) {
       walletsResult,
       unprocessedLedger,
       payoutRunsCount,
+      todayOrders,
+      pendingFulfillmentOrders,
+      packedOrders,
+      shippedOrders,
+      deliveredOrders,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ isActive: true }),
@@ -40,6 +48,14 @@ export async function getStats(req, res, next) {
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]),
       PayoutRun.countDocuments(),
+      Order.countDocuments({ status: 'paid', createdAt: { $gte: startOfToday } }),
+      Order.countDocuments({
+        status: 'paid',
+        $or: [{ fulfillmentStatus: 'pending' }, { fulfillmentStatus: { $exists: false } }],
+      }),
+      Order.countDocuments({ status: 'paid', fulfillmentStatus: 'packed' }),
+      Order.countDocuments({ status: 'paid', fulfillmentStatus: 'shipped' }),
+      Order.countDocuments({ status: 'paid', fulfillmentStatus: 'delivered' }),
     ]);
 
     const totalWalletBalance = walletsResult[0]?.total ?? 0;
@@ -54,6 +70,11 @@ export async function getStats(req, res, next) {
         totalWalletBalance,
         pendingPayoutAmount,
         payoutRunsCount,
+        todayOrders,
+        pendingFulfillmentOrders,
+        packedOrders,
+        shippedOrders,
+        deliveredOrders,
       },
     });
   } catch (error) {

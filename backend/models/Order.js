@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 
 const ORDER_STATUSES = ['pending', 'paid', 'failed'];
+const FULFILLMENT_STATUSES = ['pending', 'packed', 'shipped', 'delivered', 'cancelled'];
+
+export { ORDER_STATUSES, FULFILLMENT_STATUSES };
 
 const orderSchema = new mongoose.Schema(
   {
@@ -34,6 +37,13 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ORDER_STATUSES,
+      default: 'pending',
+      required: true,
+      index: true,
+    },
+    fulfillmentStatus: {
+      type: String,
+      enum: FULFILLMENT_STATUSES,
       default: 'pending',
       required: true,
       index: true,

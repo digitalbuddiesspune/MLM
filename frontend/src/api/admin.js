@@ -106,6 +106,11 @@ export async function getAdminOrders(params = {}) {
   return data;
 }
 
+export async function updateAdminOrderFulfillment(orderId, fulfillmentStatus) {
+  const { data } = await api.patch(`/admin/orders/${orderId}/fulfillment`, { fulfillmentStatus });
+  return data;
+}
+
 export async function getAdminUserWallets(params = {}) {
   const { data } = await api.get('/admin/user-wallets', { params });
   return data;

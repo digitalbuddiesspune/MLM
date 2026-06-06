@@ -1,6 +1,15 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getAdminOrders } from '../../api/admin.js';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getAdminOrders, updateAdminOrderFulfillment } from '../../api/admin.js';
+
+const FULFILLMENT_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'packed', label: 'Packed' },
+  { value: 'shipped', label: 'Shipped' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
 
 function formatShippingAddress(address) {
   if (!address?.fullName) return null;
@@ -19,44 +28,140 @@ function formatShippingAddress(address) {
   );
 }
 
+function paymentStatusClass(status) {
+  if (status === 'paid') return 'bg-green-100 text-green-700';
+  if (status === 'failed') return 'bg-red-100 text-red-700';
+  return 'bg-amber-100 text-amber-700';
+}
+
+function fulfillmentStatusClass(status) {
+  if (status === 'delivered') return 'bg-green-100 text-green-700';
+  if (status === 'shipped') return 'bg-indigo-100 text-indigo-700';
+  if (status === 'packed') return 'bg-blue-100 text-blue-700';
+  if (status === 'cancelled') return 'bg-red-100 text-red-700';
+  return 'bg-amber-100 text-amber-700';
+}
+
 export default function AdminOrders() {
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+
+  const status = searchParams.get('status') ?? '';
+  const fulfillmentStatus = searchParams.get('fulfillmentStatus') ?? '';
+  const today = searchParams.get('today') === '1';
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+
+  const [updateError, setUpdateError] = useState('');
 
   const { data, isLoading: loading, error: queryError } = useQuery({
-    queryKey: ['admin', 'orders', { status, page }],
-    queryFn: () => getAdminOrders({ status: status || undefined, page, limit: 20 }),
+    queryKey: ['admin', 'orders', { status, fulfillmentStatus, today, page }],
+    queryFn: () => getAdminOrders({
+      status: status || undefined,
+      fulfillmentStatus: fulfillmentStatus || undefined,
+      today: today ? '1' : undefined,
+      page,
+      limit: 20,
+    }),
     keepPreviousData: true,
+  });
+
+  const updateFulfillmentMutation = useMutation({
+    mutationFn: ({ orderId, nextStatus }) => updateAdminOrderFulfillment(orderId, nextStatus),
+    onSuccess: () => {
+      setUpdateError('');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+    },
+    onError: (err) => {
+      setUpdateError(err?.response?.data?.error ?? 'Failed to update fulfillment status');
+    },
   });
 
   const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load orders') : '';
   const orders = data?.data?.orders ?? [];
   const pagination = data?.data?.pagination ?? { page: 1, totalPages: 1, total: 0 };
 
+  const updateFilters = (updates) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === '' || value === false || value == null) {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
+    });
+    if (!('page' in updates)) {
+      next.delete('page');
+    }
+    setSearchParams(next);
+  };
+
+  useEffect(() => {
+    setUpdateError('');
+  }, [status, fulfillmentStatus, today, page]);
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Orders</h1>
-      <p className="mt-1 text-slate-600">All user orders and payment status.</p>
+      <p className="mt-1 text-slate-600">Manage orders, filter by date, and update shipping status.</p>
 
-      <div className="mt-4 flex items-center gap-3">
-        <label htmlFor="status" className="text-sm text-slate-600">Status</label>
-        <select
-          id="status"
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">All</option>
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="failed">Failed</option>
-        </select>
+      <div className="mt-4 flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div>
+          <label htmlFor="payment-status" className="block text-sm text-slate-600">Payment</label>
+          <select
+            id="payment-status"
+            value={status}
+            onChange={(e) => updateFilters({ status: e.target.value })}
+            className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All</option>
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="fulfillment-status" className="block text-sm text-slate-600">Fulfillment</label>
+          <select
+            id="fulfillment-status"
+            value={fulfillmentStatus}
+            onChange={(e) => updateFilters({ fulfillmentStatus: e.target.value })}
+            className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All</option>
+            {FULFILLMENT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={today}
+            onChange={(e) => updateFilters({ today: e.target.checked ? '1' : '' })}
+            className="rounded border-slate-300"
+          />
+          Today&apos;s orders only
+        </label>
+
+        {(status || fulfillmentStatus || today) && (
+          <button
+            type="button"
+            onClick={() => setSearchParams({})}
+            className="pb-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {(error || updateError) && (
+        <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error || updateError}
+        </div>
+      )}
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200">
@@ -67,18 +172,19 @@ export default function AdminOrders() {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Product</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Ship to</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Amount</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Payment</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Fulfillment</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Created</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Loading orders...</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">Loading orders...</td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">No orders found.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">No orders found.</td>
               </tr>
             ) : (
               orders.map((order) => (
@@ -96,16 +202,30 @@ export default function AdminOrders() {
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">Rs {order.amount?.toLocaleString() ?? 0}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      order.status === 'paid'
-                        ? 'bg-green-100 text-green-700'
-                        : order.status === 'failed'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-amber-100 text-amber-700'
-                    }`}
-                    >
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${paymentStatusClass(order.status)}`}>
                       {order.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {order.status === 'paid' ? (
+                      <select
+                        value={order.fulfillmentStatus ?? 'pending'}
+                        disabled={updateFulfillmentMutation.isPending}
+                        onChange={(e) => {
+                          updateFulfillmentMutation.mutate({
+                            orderId: order._id,
+                            nextStatus: e.target.value,
+                          });
+                        }}
+                        className={`rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium ${fulfillmentStatusClass(order.fulfillmentStatus ?? 'pending')}`}
+                      >
+                        {FULFILLMENT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-500">
                     {order.createdAt ? new Date(order.createdAt).toLocaleString() : '—'}
@@ -119,12 +239,14 @@ export default function AdminOrders() {
 
       {pagination.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-slate-600">Page {pagination.page} of {pagination.totalPages}</p>
+          <p className="text-sm text-slate-600">
+            Page {pagination.page} of {pagination.totalPages} ({pagination.total} orders)
+          </p>
           <div className="flex gap-2">
             <button
               type="button"
               disabled={pagination.page <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => updateFilters({ page: pagination.page - 1 })}
               className="rounded-lg border border-slate-300 px-3 py-1 text-sm disabled:opacity-50"
             >
               Previous
@@ -132,7 +254,7 @@ export default function AdminOrders() {
             <button
               type="button"
               disabled={pagination.page >= pagination.totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => updateFilters({ page: pagination.page + 1 })}
               className="rounded-lg border border-slate-300 px-3 py-1 text-sm disabled:opacity-50"
             >
               Next

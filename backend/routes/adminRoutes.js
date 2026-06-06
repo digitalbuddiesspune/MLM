@@ -12,7 +12,7 @@ import {
 } from '../controllers/adminController.js';
 import { listKycHandler, reviewKycHandler } from '../controllers/kycController.js';
 import { createProduct, updateProduct, deleteProduct } from '../controllers/productController.js';
-import { getAdminOrders } from '../controllers/orderController.js';
+import { getAdminOrders, updateAdminOrderFulfillment } from '../controllers/orderController.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
@@ -36,5 +36,6 @@ router.post('/products', requireAuth, requireAdmin, createProduct);
 router.patch('/products/:id', requireAuth, requireAdmin, updateProduct);
 router.delete('/products/:id', requireAuth, requireAdmin, deleteProduct);
 router.get('/orders', requireAuth, requireAdmin, getAdminOrders);
+router.patch('/orders/:id/fulfillment', requireAuth, requireAdmin, updateAdminOrderFulfillment);
 
 export default router;
