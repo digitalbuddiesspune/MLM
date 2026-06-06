@@ -19,13 +19,12 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <Link to="/" className="inline-flex items-center gap-2 font-semibold text-teal-700">
+            <Link to="/" className="inline-flex items-center">
               <img
                 src="/amruta-wellness-logo.png"
                 alt="Amruta Wellness"
-                className="h-24 w-24 object-contain"
+                className="h-16 w-auto max-w-[160px] object-contain"
               />
-            
             </Link>
             <p className="mt-3 max-w-xs text-sm text-slate-600">
               Trusted wellness and healthcare solutions for a healthier tomorrow.

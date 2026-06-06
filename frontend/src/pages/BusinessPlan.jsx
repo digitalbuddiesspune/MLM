@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProducts } from '../api/products.js';
+import ProductImage from '../components/ProductImage.jsx';
 import { isAuthenticated } from '../api/auth.js';
 import { addToCart } from '../api/cart.js';
 
@@ -195,8 +196,14 @@ export default function BusinessPlan() {
           </div>
         </div>
       </section>
-      <section className="px-4  sm:px-6 lg:px-8 rounded-3xl">
-        <img className='rounded-2xl' src="https://res.cloudinary.com/dq3meq3qa/image/upload/v1773731732/Add_a_heading_k5ecfp.svg" alt="" />
+      <section className="px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-[#ccd3d8] bg-white p-4 shadow-sm sm:p-6">
+          <img
+            className="mx-auto block h-auto w-full max-w-4xl object-contain"
+            src="https://res.cloudinary.com/dq3meq3qa/image/upload/v1773731732/Add_a_heading_k5ecfp.svg"
+            alt="Amruta Wellness binary business plan diagram"
+          />
+        </div>
       </section>
 
       <section className="border-t border-[#ccd3d8] px-4 py-16 sm:px-6 lg:px-8">
@@ -223,17 +230,14 @@ export default function BusinessPlan() {
                 {products.map((product) => (
                   <article
                     key={product._id}
-                    className="rounded-2xl border border-[#ccd3d8] bg-[#edf1f3] p-6 shadow-sm transition-shadow hover:shadow-lg"
+                    className="flex h-full flex-col rounded-2xl border border-[#ccd3d8] bg-[#edf1f3] p-6 shadow-sm transition-shadow hover:shadow-lg"
                   >
-                    {product.imageUrl && (
-                      <div className="mb-4 flex items-center justify-center rounded-lg bg-[#dfe4e8]">
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="max-h-64 w-auto object-contain"
-                        />
-                      </div>
-                    )}
+                    <ProductImage
+                      src={product.imageUrl}
+                      alt={product.name}
+                      variant="cardMuted"
+                      className="mb-4"
+                    />
                     <h3 className="text-xl font-semibold text-[#111827]">{product.name}</h3>
                     {product.description && (
                       <p className="mt-2 text-[#2a3442]">{product.description}</p>

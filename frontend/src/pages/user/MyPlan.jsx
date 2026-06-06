@@ -6,6 +6,7 @@ import { getProducts } from '../../api/products.js';
 import { createOrder, verifyOrderPayment } from '../../api/orders.js';
 import { addToCart, getCart } from '../../api/cart.js';
 import { getStoredUser } from '../../api/auth.js';
+import ProductImage from '../../components/ProductImage.jsx';
 
 export default function MyPlan() {
   const queryClient = useQueryClient();
@@ -172,13 +173,7 @@ export default function MyPlan() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <article key={product._id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="rounded-lg bg-slate-100 p-3">
-                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="mx-auto h-36 w-auto object-contain" />
-                  ) : (
-                    <div className="flex h-36 items-center justify-center text-xs text-slate-400">No image</div>
-                  )}
-                </div>
+                <ProductImage src={product.imageUrl} alt={product.name} variant="card" />
                 <h3 className="mt-3 text-base font-semibold text-slate-900">{product.name}</h3>
                 {product.description ? (
                   <p className="mt-1 line-clamp-2 flex-1 text-sm text-slate-600">{product.description}</p>
@@ -245,17 +240,11 @@ export default function MyPlan() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {paidOrders.map((order) => (
               <article key={order._id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="rounded-lg bg-slate-100 p-3">
-                  {order.productSnapshot?.imageUrl ? (
-                    <img
-                      src={order.productSnapshot.imageUrl}
-                      alt={order.productSnapshot?.name ?? 'Product'}
-                      className="mx-auto h-36 w-auto object-contain"
-                    />
-                  ) : (
-                    <div className="flex h-36 items-center justify-center text-xs text-slate-400">No image</div>
-                  )}
-                </div>
+                <ProductImage
+                  src={order.productSnapshot?.imageUrl}
+                  alt={order.productSnapshot?.name ?? 'Product'}
+                  variant="card"
+                />
                 <h3 className="mt-3 text-base font-semibold text-slate-900">{order.productSnapshot?.name ?? 'Product'}</h3>
                 <p className="mt-1 text-sm text-slate-700">
                   Amount: <span className="font-medium">Rs {order.amount?.toLocaleString() ?? 0}</span>

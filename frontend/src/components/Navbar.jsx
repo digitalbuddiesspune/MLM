@@ -34,11 +34,11 @@ export default function Navbar({ onOpenLogin, onOpenRegister, transparent = fals
   return (
     <header className={headerClass}>
       <nav className="flex mx-auto max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 py-2">
-        <Link to="/" className={linkClass}>
+        <Link to="/" className={`inline-flex items-center ${linkClass}`}>
           <img
             src="/amruta-wellness-logo.png"
             alt="Amruta Wellness"
-            className={transparent ? 'h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 object-contain' : 'h-24 w-24 object-contain'}
+            className={transparent ? 'h-14 w-auto max-w-[140px] object-contain sm:h-16' : 'h-16 w-auto max-w-[160px] object-contain'}
           />
         </Link>
 

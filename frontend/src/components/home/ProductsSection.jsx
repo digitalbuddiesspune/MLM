@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../../api/products.js';
+import ProductImage from '../../components/ProductImage.jsx';
 
 const PRODUCTS_QUERY_KEY = ['products'];
 
@@ -35,17 +36,14 @@ export default function ProductsSection() {
               {products.map((product) => (
                 <article
                   key={product._id}
-                  className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                  className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
                 >
-                  {product.imageUrl && (
-                    <div className="mb-4 aspect-video overflow-hidden rounded-lg bg-slate-100">
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  )}
+                  <ProductImage
+                    src={product.imageUrl}
+                    alt={product.name}
+                    variant="card"
+                    className="mb-4"
+                  />
                   <h3 className="text-xl font-semibold text-slate-900">{product.name}</h3>
                   {product.description && (
                     <p className="mt-3 text-slate-600">{product.description}</p>

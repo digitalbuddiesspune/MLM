@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProduct as createProductApi, updateProduct as updateProductApi } from '../../api/admin.js';
 import { getProductById } from '../../api/products.js';
+import ProductImage from '../../components/ProductImage.jsx';
 
 export default function AdminProductForm() {
   const navigate = useNavigate();
@@ -172,10 +173,11 @@ export default function AdminProductForm() {
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
             {form.imageUrl ? (
-              <img
+              <ProductImage
                 src={form.imageUrl}
                 alt={form.name || 'Product preview'}
-                className="mt-2 h-24 w-24 rounded-md border border-slate-200 object-cover"
+                variant="preview"
+                className="mt-3"
               />
             ) : null}
           </div>

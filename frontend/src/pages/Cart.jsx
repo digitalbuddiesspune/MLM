@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clearCart, getCart, removeFromCart, updateCartItem } from '../api/cart.js';
 import { isAuthenticated } from '../api/auth.js';
+import ProductImage from '../components/ProductImage.jsx';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -95,11 +96,7 @@ export default function Cart() {
               <article key={item.product._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
-                    {item.product.imageUrl ? (
-                      <img src={item.product.imageUrl} alt={item.product.name} className="h-20 w-20 rounded-md object-cover" />
-                    ) : (
-                      <div className="h-20 w-20 rounded-md bg-slate-100" />
-                    )}
+                    <ProductImage src={item.product.imageUrl} alt={item.product.name} variant="thumb" />
                     <div>
                       <h2 className="font-semibold text-slate-900">{item.product.name}</h2>
                       <p className="text-sm text-slate-500">

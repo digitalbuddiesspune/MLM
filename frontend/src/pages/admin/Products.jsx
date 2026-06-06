@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/axios.js';
 import { deleteProduct as deleteProductApi } from '../../api/admin.js';
+import ProductImage from '../../components/ProductImage.jsx';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -127,18 +128,7 @@ export default function AdminProducts() {
               products.map((p) => (
                 <tr key={p.id}>
                   <td className="px-4 py-3">
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.name}
-                        className="h-12 w-12 rounded-md border border-slate-200 object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-slate-300 text-[10px] text-slate-400">
-                        No image
-                      </div>
-                    )}
+                    <ProductImage src={p.imageUrl} alt={p.name} variant="admin" />
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">{p.name}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{p.sku}</td>

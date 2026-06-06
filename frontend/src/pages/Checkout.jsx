@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { createMyAddress, detectAddressStateByPincode, getMyAddresses } from '../api/user.js';
+import ProductImage from '../components/ProductImage.jsx';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -431,11 +432,7 @@ export default function Checkout() {
               {fromCart ? (
                 cartItems.map((item) => (
                   <div key={item.product._id} className="flex items-center gap-2.5 rounded-lg bg-slate-50 p-2.5">
-                    {item.product.imageUrl ? (
-                      <img src={item.product.imageUrl} alt={item.product.name} className="h-10 w-10 rounded-md object-cover" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-md bg-slate-200" />
-                    )}
+                    <ProductImage src={item.product.imageUrl} alt={item.product.name} variant="thumbXs" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-semibold text-slate-900">{item.product.name}</p>
                       <p className="text-xs text-slate-600">Qty: {item.quantity}</p>
@@ -445,11 +442,7 @@ export default function Checkout() {
                 ))
               ) : (
                 <div className="flex items-center gap-2.5 rounded-lg bg-slate-50 p-2.5">
-                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="h-12 w-12 rounded-md object-cover" />
-                  ) : (
-                    <div className="h-12 w-12 rounded-md bg-slate-200" />
-                  )}
+                  <ProductImage src={product.imageUrl} alt={product.name} variant="thumbSm" />
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-slate-900">{product.name}</p>
                     <p className="text-xs text-slate-600">Qty: 1</p>

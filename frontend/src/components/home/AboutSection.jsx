@@ -1,6 +1,6 @@
 import aboutImage from '../../assets/banner1.png';
-export default function AboutSection() {
 
+export default function AboutSection() {
   const storyPoints = [
     {
       no: '01',
@@ -51,9 +51,6 @@ export default function AboutSection() {
               </button>
             </div>
           </div>
-
-        
-
         </div>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-2 lg:gap-14">
@@ -92,14 +89,15 @@ export default function AboutSection() {
             ))}
           </div>
         </div>
+
+        <div className="mt-10 overflow-hidden rounded-2xl border border-[#ccd3d8] bg-[#dfe4e8] shadow-sm">
+          <img
+            src={aboutImage}
+            alt="Healthcare professionals in a hospital corridor"
+            className="block h-auto max-h-[420px] w-full object-cover object-center sm:max-h-[480px] lg:max-h-[520px]"
+          />
+        </div>
       </div>
-      <div className="relative z-10 mt-10 overflow-hidden rounded-2xl border border-[#ccd3d8] bg-[#dfe4e8]">
-            <img
-              src={aboutImage}
-              alt="Doctors in hospital corridor"
-              className=""
-            />
-          </div>
     </section>
   );
 }
