@@ -22,7 +22,7 @@ function binaryStatusFor(node) {
   if (node.placementFrozen) return 'frozen';
   if (!node.leftChild) return 'open_left';
   if (!node.rightChild) return 'open_right';
-  return 'pair_matched';
+  return node.pairMatched ? 'pair_matched' : 'open_right';
 }
 
 async function nextPlacementSequence(session) {
@@ -34,26 +34,42 @@ async function nextPlacementSequence(session) {
   return Number(latest?.placementSequence ?? 0) + 1;
 }
 
+async function bothLegsAreDirectRecruits(nodeId, session) {
+  const node = await User.findById(nodeId).select('leftChild rightChild').session(session).lean();
+  if (!node?.leftChild || !node?.rightChild) return false;
+
+  const childIds = [node.leftChild, node.rightChild];
+  const children = await User.find({ _id: { $in: childIds } })
+    .select('sponsorId')
+    .session(session)
+    .lean();
+
+  if (children.length !== 2) return false;
+  const nodeKey = String(nodeId);
+  return children.every((child) => String(child.sponsorId) === nodeKey);
+}
+
 async function refreshNodeBinaryState(nodeId, session) {
   const node = await User.findById(nodeId).session(session);
   if (!node) return null;
 
   node.binaryLeftCount = node.leftChild ? 1 : 0;
   node.binaryRightCount = node.rightChild ? 1 : 0;
-  const matchedNow = Boolean(node.leftChild && node.rightChild);
+  const legsFull = Boolean(node.leftChild && node.rightChild);
+  const canPairMatch = legsFull && (await bothLegsAreDirectRecruits(nodeId, session));
   const wasMatched = Boolean(node.pairMatched);
 
-  node.pairMatched = matchedNow;
-  node.pairCount = matchedNow ? 1 : 0;
-  node.activePlacement = !matchedNow && !node.placementFrozen;
+  node.pairMatched = canPairMatch;
+  node.pairCount = canPairMatch ? 1 : 0;
+  node.activePlacement = !canPairMatch && !node.placementFrozen;
   node.binaryStatus = binaryStatusFor(node);
   await node.save({ session });
 
-  if (matchedNow && !wasMatched) {
+  if (canPairMatch && !wasMatched) {
     await addIncome(node._id, BINARY_AMOUNT_PER_PAIR, 'binary', node._id, session, {
       pairs: 1,
       perPair: BINARY_AMOUNT_PER_PAIR,
-      reason: 'binary pair matched',
+      reason: 'binary pair matched (direct sponsor legs)',
     });
     await User.findByIdAndUpdate(
       node._id,
@@ -125,7 +141,8 @@ export async function assertPlacementSafe(userId, placementParentId, session = n
 
 /**
  * Queue-based BFS from the sponsor root:
- * iterate level-by-level; at each node try left vacany, then right; otherwise enqueue legs left then right.
+ * 1) Fill sponsor LEFT, then sponsor RIGHT (direct legs — eligible for pair matching).
+ * 2) After sponsor is full, spill one-directionally inside the sponsor's LEFT subtree only.
  */
 export async function findAvailableParent(rootSponsorId, session = null) {
   if (!mongoose.isValidObjectId(rootSponsorId)) {
@@ -134,15 +151,32 @@ export async function findAvailableParent(rootSponsorId, session = null) {
     throw err;
   }
 
-  const rootQuery = User.findById(rootSponsorId).select('_id').lean();
-  const rootExists = session ? await rootQuery.session(session) : await rootQuery;
-  if (!rootExists) {
+  const sponsorQuery = User.findById(rootSponsorId)
+    .select('_id leftChild rightChild placementFrozen')
+    .lean();
+  const sponsor = session ? await sponsorQuery.session(session) : await sponsorQuery;
+  if (!sponsor) {
     const err = new Error('Sponsor not found');
     err.statusCode = 404;
     throw err;
   }
 
-  const queue = [rootSponsorId];
+  if (!sponsor.placementFrozen) {
+    if (!sponsor.leftChild) {
+      return { parentId: sponsor._id, placementSide: 'left' };
+    }
+    if (!sponsor.rightChild) {
+      return { parentId: sponsor._id, placementSide: 'right' };
+    }
+  }
+
+  if (!sponsor.leftChild) {
+    const err = new Error('No eligible placement found under sponsor subtree');
+    err.statusCode = 422;
+    throw err;
+  }
+
+  const queue = [sponsor.leftChild];
   let scanned = 0;
 
   while (queue.length > 0 && scanned < MAX_PLACEMENT_TRAVERSAL) {

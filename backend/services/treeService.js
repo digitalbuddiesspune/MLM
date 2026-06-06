@@ -1,7 +1,7 @@
 /**
  * Binary placement reads for UI + reporting.
  *
- * Auto placement follows `placementService.findAvailableParent` (BFS level order).
+ * Auto placement: sponsor left/right first, then one-directional spill in sponsor's left leg.
  */
 import mongoose from 'mongoose';
 import User from '../models/User.js';
@@ -149,4 +149,4 @@ export async function getMlBinaryWireTree(rootUserId, maxDepth = 10) {
   return shapeCanonicalBinaryPayload(internal);
 }
 
-/* Placement uses BFS in placementService.findAvailableParent. */
+/* Placement: direct sponsor legs first, then one-directional left-leg spill. Pair match requires direct recruits on both legs. */
