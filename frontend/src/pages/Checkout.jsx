@@ -137,7 +137,7 @@ export default function Checkout() {
       if (!loaded) throw new Error('Failed to load Razorpay SDK');
 
       if (fromCart) {
-        const created = await createCartCheckout();
+        const created = await createCartCheckout(selectedAddress._id);
         const pendingCartPaymentId = created?.data?.pendingCartPaymentId;
         const razorpayOrder = created?.data?.razorpayOrder;
         const razorpayKeyId = created?.data?.razorpayKeyId;
@@ -177,7 +177,7 @@ export default function Checkout() {
         return;
       }
 
-      const created = await createOrder(product._id);
+      const created = await createOrder(product._id, selectedAddress._id);
       const backendOrder = created?.data?.order;
       const razorpayOrder = created?.data?.razorpayOrder;
       const razorpayKeyId = created?.data?.razorpayKeyId;

@@ -2,6 +2,23 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminOrders } from '../../api/admin.js';
 
+function formatShippingAddress(address) {
+  if (!address?.fullName) return null;
+  return (
+    <>
+      <p className="font-medium text-slate-900">{address.fullName} ({address.phone})</p>
+      {address.streetAddress ? (
+        <p className="mt-0.5 text-slate-700">{address.streetAddress}</p>
+      ) : null}
+      <p className="mt-0.5 text-xs text-slate-500">
+        {[address.tehsil, address.district].filter(Boolean).join(', ')}
+        {address.pincode ? ` — ${address.pincode}` : ''}
+      </p>
+      {address.state ? <p className="text-xs text-slate-500">{address.state}</p> : null}
+    </>
+  );
+}
+
 export default function AdminOrders() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
@@ -41,13 +58,14 @@ export default function AdminOrders() {
 
       {error && <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Order</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">User</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Product</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Ship to</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Amount</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Status</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Created</th>
@@ -56,11 +74,11 @@ export default function AdminOrders() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Loading orders...</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Loading orders...</td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">No orders found.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">No orders found.</td>
               </tr>
             ) : (
               orders.map((order) => (
@@ -71,6 +89,11 @@ export default function AdminOrders() {
                     <p className="text-xs text-slate-500">{order.userId?.email ?? '—'}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{order.productSnapshot?.name ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700">
+                    {formatShippingAddress(order.shippingAddress) ?? (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">Rs {order.amount?.toLocaleString() ?? 0}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${

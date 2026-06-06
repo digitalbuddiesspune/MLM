@@ -1,7 +1,7 @@
 import { api } from './axios.js';
 
-export async function createOrder(productId) {
-  const { data } = await api.post('/orders', { productId });
+export async function createOrder(productId, addressId) {
+  const { data } = await api.post('/orders', { productId, addressId });
   return data;
 }
 
@@ -10,8 +10,8 @@ export async function verifyOrderPayment(payload) {
   return data;
 }
 
-export async function createCartCheckout() {
-  const { data } = await api.post('/orders/cart-checkout');
+export async function createCartCheckout(addressId) {
+  const { data } = await api.post('/orders/cart-checkout', { addressId });
   return data;
 }
 

@@ -56,6 +56,15 @@ const pendingCartPaymentSchema = new mongoose.Schema(
     razorpayPaymentId: { type: String, default: '' },
     razorpaySignature: { type: String, default: '' },
     paidAt: { type: Date, default: null },
+    shippingAddress: {
+      fullName: { type: String, default: '' },
+      phone: { type: String, default: '' },
+      streetAddress: { type: String, default: '' },
+      pincode: { type: String, default: '' },
+      district: { type: String, default: '' },
+      tehsil: { type: String, default: '' },
+      state: { type: String, default: '' },
+    },
   },
   { timestamps: true }
 );

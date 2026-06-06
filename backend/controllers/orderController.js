@@ -4,6 +4,7 @@ import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
 import Cart from '../models/Cart.js';
+import Address from '../models/Address.js';
 import PendingCartPayment from '../models/PendingCartPayment.js';
 import { getOrCreateCart, populateAndFormatCart } from './cartController.js';
 import { getRazorpayClient, getRazorpayKeyId, getRazorpayKeySecret } from '../config/razorpay.js';
@@ -11,6 +12,32 @@ import { addIncome } from '../services/walletService.js';
 
 // Credit 5% on each eligible child order; left + right totals 10%.
 const BINARY_PAIR_BONUS_PERCENT = 5;
+
+function toShippingAddressSnapshot(address) {
+  if (!address) return null;
+  return {
+    fullName: address.fullName ?? '',
+    phone: address.phone ?? '',
+    streetAddress: address.streetAddress ?? '',
+    pincode: address.pincode ?? '',
+    district: address.district ?? '',
+    tehsil: address.tehsil ?? '',
+    state: address.state ?? '',
+  };
+}
+
+async function resolveShippingAddress(userId, addressId) {
+  if (!addressId || !mongoose.isValidObjectId(addressId)) {
+    return { error: 'Valid addressId is required' };
+  }
+
+  const address = await Address.findOne({ _id: addressId, userId }).lean();
+  if (!address) {
+    return { error: 'Delivery address not found' };
+  }
+
+  return { shippingAddress: toShippingAddressSnapshot(address) };
+}
 
 async function removePurchasedProductFromCart(userId, productId) {
   if (!userId || !productId) return;
@@ -47,9 +74,18 @@ async function creditBinaryPairBonusIfEligible(order) {
 
 export async function createOrder(req, res, next) {
   try {
-    const { productId } = req.body;
+    const { productId, addressId } = req.body;
     if (!productId || !mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ success: false, error: 'Valid productId is required' });
+    }
+
+    let shippingAddress = null;
+    if (addressId) {
+      const resolved = await resolveShippingAddress(req.userId, addressId);
+      if (resolved.error) {
+        return res.status(400).json({ success: false, error: resolved.error });
+      }
+      shippingAddress = resolved.shippingAddress;
     }
 
     const product = await Product.findById(productId).lean();
@@ -83,6 +119,7 @@ export async function createOrder(req, res, next) {
       currency: 'INR',
       status: 'pending',
       razorpayOrderId: razorpayOrder.id,
+      ...(shippingAddress ? { shippingAddress } : {}),
     });
 
     res.status(201).json({
@@ -161,6 +198,12 @@ export async function verifyOrderPayment(req, res, next) {
  */
 export async function createCartCheckout(req, res, next) {
   try {
+    const { addressId } = req.body ?? {};
+    const resolved = await resolveShippingAddress(req.userId, addressId);
+    if (resolved.error) {
+      return res.status(400).json({ success: false, error: resolved.error });
+    }
+
     const cart = await getOrCreateCart(req);
     const cartData = await populateAndFormatCart(cart._id);
 
@@ -201,6 +244,7 @@ export async function createCartCheckout(req, res, next) {
       totalAmount,
       currency: 'INR',
       status: 'pending',
+      shippingAddress: resolved.shippingAddress,
     });
 
     res.status(201).json({
@@ -269,6 +313,7 @@ export async function verifyCartCheckout(req, res, next) {
           razorpayPaymentId,
           razorpaySignature,
           paidAt: new Date(),
+          ...(pending.shippingAddress ? { shippingAddress: pending.shippingAddress } : {}),
         });
         await creditBinaryPairBonusIfEligible(order);
         createdOrders.push(order);
@@ -330,10 +375,51 @@ export async function getAdminOrders(req, res, next) {
       Order.countDocuments(filter),
     ]);
 
+    const userIdsNeedingAddress = [
+      ...new Set(
+        orders
+          .filter((order) => !order.shippingAddress?.fullName)
+          .map((order) => String(order.userId?._id ?? order.userId))
+          .filter((id) => mongoose.isValidObjectId(id))
+      ),
+    ];
+
+    let latestAddressByUserId = new Map();
+    if (userIdsNeedingAddress.length > 0) {
+      const latestAddresses = await Address.aggregate([
+        {
+          $match: {
+            userId: {
+              $in: userIdsNeedingAddress.map((id) => new mongoose.Types.ObjectId(id)),
+            },
+          },
+        },
+        { $sort: { updatedAt: -1 } },
+        {
+          $group: {
+            _id: '$userId',
+            address: { $first: '$$ROOT' },
+          },
+        },
+      ]);
+
+      latestAddressByUserId = new Map(
+        latestAddresses.map((row) => [String(row._id), toShippingAddressSnapshot(row.address)])
+      );
+    }
+
+    const ordersWithAddress = orders.map((order) => {
+      if (order.shippingAddress?.fullName) return order;
+      const userId = String(order.userId?._id ?? order.userId ?? '');
+      const fallbackAddress = latestAddressByUserId.get(userId);
+      if (!fallbackAddress) return order;
+      return { ...order, shippingAddress: fallbackAddress };
+    });
+
     res.json({
       success: true,
       data: {
-        orders,
+        orders: ordersWithAddress,
         pagination: {
           page,
           limit,
