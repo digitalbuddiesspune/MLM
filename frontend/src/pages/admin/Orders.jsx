@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import ListPagination from '../../components/ListPagination.jsx';
 import { getAdminOrders, updateAdminOrderFulfillment } from '../../api/admin.js';
+
+const PAGE_SIZE = 20;
 
 const FULFILLMENT_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -60,7 +63,7 @@ export default function AdminOrders() {
       fulfillmentStatus: fulfillmentStatus || undefined,
       today: today ? '1' : undefined,
       page,
-      limit: 20,
+      limit: PAGE_SIZE,
     }),
     keepPreviousData: true,
   });
@@ -79,7 +82,7 @@ export default function AdminOrders() {
 
   const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load orders') : '';
   const orders = data?.data?.orders ?? [];
-  const pagination = data?.data?.pagination ?? { page: 1, totalPages: 1, total: 0 };
+  const pagination = data?.data?.pagination ?? { page: 1, totalPages: 1, total: 0, limit: PAGE_SIZE };
 
   const updateFilters = (updates) => {
     const next = new URLSearchParams(searchParams);
@@ -95,6 +98,13 @@ export default function AdminOrders() {
     }
     setSearchParams(next);
   };
+
+  useEffect(() => {
+    const totalPages = Math.max(1, pagination.totalPages ?? 1);
+    if (page > totalPages) {
+      updateFilters({ page: totalPages <= 1 ? '' : totalPages });
+    }
+  }, [pagination.totalPages, page]);
 
   useEffect(() => {
     setUpdateError('');
@@ -235,33 +245,17 @@ export default function AdminOrders() {
             )}
           </tbody>
         </table>
+        {!loading && pagination.total > 0 && (
+          <ListPagination
+            page={pagination.page}
+            totalPages={Math.max(1, pagination.totalPages)}
+            total={pagination.total}
+            pageSize={PAGE_SIZE}
+            onPageChange={(nextPage) => updateFilters({ page: nextPage <= 1 ? '' : nextPage })}
+            disabled={loading}
+          />
+        )}
       </div>
-
-      {pagination.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-slate-600">
-            Page {pagination.page} of {pagination.totalPages} ({pagination.total} orders)
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={pagination.page <= 1}
-              onClick={() => updateFilters({ page: pagination.page - 1 })}
-              className="rounded-lg border border-slate-300 px-3 py-1 text-sm disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={pagination.page >= pagination.totalPages}
-              onClick={() => updateFilters({ page: pagination.page + 1 })}
-              className="rounded-lg border border-slate-300 px-3 py-1 text-sm disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
