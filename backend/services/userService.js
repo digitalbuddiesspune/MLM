@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { applySponsorJoinEffects } from './levelService.js';
+import { placeUserUnderSponsor } from './placementService.js';
 import { nextReferralNumber, ensureReferralNumber, FIRST_REFERRAL_NUMBER } from './referralNumberService.js';
 
 const SALT_ROUNDS = 10;
@@ -40,8 +41,7 @@ async function resolveSponsorMongoId(sponsorInput, session) {
 }
 
 /**
- * Registers a new user with minimal fields.
- * Keeps user UNPLACED in binary tree until sponsor/admin places manually.
+ * Registers a new user and auto-places them in the sponsor's binary subtree (BFS).
  * Sponsor must be specified as numeric referralNumber (digits only).
  * @param {{ name: string, mobile: string, email: string, password: string, sponsorId?: string }} payload
  * @returns {Promise<Object>} Created user (password excluded)
@@ -93,6 +93,14 @@ export async function register(payload) {
     );
 
     await applySponsorJoinEffects(normalizedSponsorId, createdUser._id, session);
+
+    await placeUserUnderSponsor({
+      userId: createdUser._id,
+      sponsorId: normalizedSponsorId,
+      manualPlacement: false,
+      session,
+      reason: 'auto placement on registration',
+    });
 
     await session.commitTransaction();
 

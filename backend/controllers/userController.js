@@ -16,6 +16,7 @@ import {
   getBinaryGenealogyPath,
   isBinaryDescendantOrSelf,
 } from '../services/treeQueryService.js';
+import { getPlatformRootUserId } from '../services/platformRootService.js';
 import { ensureReferralNumber } from '../services/referralNumberService.js';
 
 const PASSWORD_SALT_ROUNDS = 10;
@@ -162,6 +163,11 @@ export async function changeMyPassword(req, res, next) {
 export async function getBinaryTree(req, res, next) {
   try {
     const userId = req.userId;
+    const actor = await User.findById(userId).select('role').lean();
+    const isAdmin = actor?.role === 'admin';
+    const platformRootId = isAdmin ? await getPlatformRootUserId() : null;
+    const treeAnchorId = isAdmin && platformRootId ? platformRootId : userId;
+
     const raw = req.query.maxDepth;
     let maxDepth = null;
 
@@ -184,21 +190,30 @@ export async function getBinaryTree(req, res, next) {
       if (!mongoose.isValidObjectId(rid)) {
         return res.status(400).json({ success: false, error: 'Invalid rootId' });
       }
-      const allowed = await isBinaryDescendantOrSelf(userId, rid);
+      const scopeRootId = isAdmin && platformRootId ? platformRootId : userId;
+      const allowed = await isBinaryDescendantOrSelf(scopeRootId, rid);
       if (!allowed) {
-        return res.status(403).json({ success: false, error: 'Subtree root is outside your binary team' });
+        return res.status(403).json({
+          success: false,
+          error: isAdmin
+            ? 'Subtree root is outside the platform binary tree'
+            : 'Subtree root is outside your binary team',
+        });
       }
       rootOverrideId = rid;
     }
 
-    const treeInternal = await getBinaryTreeData(userId, maxDepth, { rootOverrideId });
+    const treeInternal = await getBinaryTreeData(treeAnchorId, maxDepth, { rootOverrideId });
     const fmt = String(req.query.format ?? '').toLowerCase();
     const tree =
       fmt === 'canonical' || fmt === 'mlm' ? shapeCanonicalBinaryPayload(treeInternal) : treeInternal;
 
     res.json({
       success: true,
-      data: { tree },
+      data: {
+        tree,
+        platformRootId: isAdmin ? platformRootId : undefined,
+      },
     });
   } catch (error) {
     next(error);
@@ -267,9 +282,19 @@ export async function getBinaryFind(req, res, next) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    const allowed = await isBinaryDescendantOrSelf(req.userId, hit._id);
+    const actor = await User.findById(req.userId).select('role').lean();
+    const isAdmin = actor?.role === 'admin';
+    const platformRootId = isAdmin ? await getPlatformRootUserId() : null;
+    const scopeRootId = isAdmin && platformRootId ? platformRootId : req.userId;
+
+    const allowed = await isBinaryDescendantOrSelf(scopeRootId, hit._id);
     if (!allowed) {
-      return res.status(403).json({ success: false, error: 'Member is outside your placement tree' });
+      return res.status(403).json({
+        success: false,
+        error: isAdmin
+          ? 'Member is outside the platform binary tree'
+          : 'Member is outside your placement tree',
+      });
     }
 
     res.json({

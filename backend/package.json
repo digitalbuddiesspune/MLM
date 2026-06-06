@@ -10,6 +10,7 @@
     "seed": "node scripts/seed.js",
     "seed:binary-demo": "node scripts/seed-binary-demo.js",
     "seed:products": "node scripts/seed-products.js",
+    "link-unplaced-users": "node scripts/link-unplaced-users.js",
     "promote": "node scripts/promote-user.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

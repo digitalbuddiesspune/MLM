@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
 import {
@@ -54,6 +55,8 @@ function TreeNode({ node, level = 0, maxVisibleLevel = 3, highlightedId = null }
 }
 
 export default function BinaryTree() {
+  const location = useLocation();
+  const isAdminView = location.pathname.startsWith('/admin');
   const stored = getStoredUser();
   const currentUserId = stored?._id ?? null;
 
@@ -113,7 +116,9 @@ export default function BinaryTree() {
           Binary Tree
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          Simple sponsor hierarchy view. Example structure: A root with left/right branches (B/C), then D/E/F/G and so on.
+          {isAdminView
+            ? 'Centralized platform binary tree. The admin account is the root sponsor; every registered member is linked under this tree.'
+            : 'Simple sponsor hierarchy view. Example structure: A root with left/right branches (B/C), then D/E/F/G and so on.'}
         </p>
       </header>
 
@@ -185,7 +190,7 @@ export default function BinaryTree() {
                 setSubtreeAnchor(null);
               }}
             >
-              Back to my root
+              {isAdminView ? 'Back to platform root' : 'Back to my root'}
             </button>
           )}
         </div>
@@ -205,7 +210,9 @@ export default function BinaryTree() {
         ) : null}
         {!treeQuery.isLoading && !tree && (
           <p className="py-16 text-center text-sm text-slate-500">
-            No placement data yet. Register team members using your referral code.
+            {isAdminView
+              ? 'No binary tree data yet. Register members with the admin referral code to build the centralized tree.'
+              : 'No placement data yet. Register team members using your referral code.'}
           </p>
         )}
         {!treeQuery.isLoading && tree && (
