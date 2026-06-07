@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register as registerApi, setAuth, getDashboardPathForRole } from '../api/auth.js';
+import PasswordInput from './PasswordInput.jsx';
 
 function digitsOnly(value) {
   return String(value ?? '').replace(/\D/g, '');
@@ -56,7 +57,7 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
         <button
           type="button"
           onClick={onClose}
@@ -76,7 +77,7 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="modal-name" className="block text-sm font-medium text-slate-700">Full name <span className="text-red-500">*</span></label>
             <input
@@ -118,34 +119,6 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
             />
           </div>
           <div>
-            <label htmlFor="modal-reg-password" className="block text-sm font-medium text-slate-700">Password <span className="text-red-500">*</span></label>
-            <input
-              id="modal-reg-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-              disabled={loading}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
-            />
-          </div>
-          <div>
-            <label htmlFor="modal-reg-confirm-password" className="block text-sm font-medium text-slate-700">
-              Confirm password <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="modal-reg-confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-              disabled={loading}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
-            />
-          </div>
-          <div>
             <label htmlFor="modal-sponsorId" className="block text-sm font-medium text-slate-700">Sponsor referral code <span className="text-red-500">*</span></label>
             <input
               id="modal-sponsorId"
@@ -160,12 +133,36 @@ export default function RegisterModal({ onClose, onSwitchToLogin }) {
               disabled={loading}
               className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
             />
-            <p className="mt-1 text-xs text-slate-500">Use the sponsor&apos;s numeric code (digits only)</p>
           </div>
+          <div>
+            <label htmlFor="modal-reg-password" className="block text-sm font-medium text-slate-700">Password <span className="text-red-500">*</span></label>
+            <PasswordInput
+              id="modal-reg-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <label htmlFor="modal-reg-confirm-password" className="block text-sm font-medium text-slate-700">
+              Confirm password <span className="text-red-500">*</span>
+            </label>
+            <PasswordInput
+              id="modal-reg-confirm-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              disabled={loading}
+            />
+          </div>
+          <p className="sm:col-span-2 text-xs text-slate-500">Use the sponsor&apos;s numeric referral code (digits only)</p>
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-teal-600 px-4 py-3 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            className="sm:col-span-2 w-full rounded-lg bg-teal-600 px-4 py-3 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
             {loading ? 'Creating account…' : 'Create account'}
           </button>

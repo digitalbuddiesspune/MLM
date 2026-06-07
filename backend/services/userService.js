@@ -41,7 +41,7 @@ async function resolveSponsorMongoId(sponsorInput, session) {
 }
 
 /**
- * Registers a new user and auto-places them in the sponsor's binary subtree (BFS).
+ * Registers a new user and auto-places them in the sponsor's binary subtree (left-chain spillover).
  * Sponsor must be specified as numeric referralNumber (digits only).
  * @param {{ name: string, mobile: string, email: string, password: string, sponsorId?: string }} payload
  * @returns {Promise<Object>} Created user (password excluded)

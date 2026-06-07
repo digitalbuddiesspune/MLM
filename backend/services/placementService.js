@@ -34,29 +34,13 @@ async function nextPlacementSequence(session) {
   return Number(latest?.placementSequence ?? 0) + 1;
 }
 
-async function bothLegsAreDirectRecruits(nodeId, session) {
-  const node = await User.findById(nodeId).select('leftChild rightChild').session(session).lean();
-  if (!node?.leftChild || !node?.rightChild) return false;
-
-  const childIds = [node.leftChild, node.rightChild];
-  const children = await User.find({ _id: { $in: childIds } })
-    .select('sponsorId')
-    .session(session)
-    .lean();
-
-  if (children.length !== 2) return false;
-  const nodeKey = String(nodeId);
-  return children.every((child) => String(child.sponsorId) === nodeKey);
-}
-
 async function refreshNodeBinaryState(nodeId, session) {
   const node = await User.findById(nodeId).session(session);
   if (!node) return null;
 
   node.binaryLeftCount = node.leftChild ? 1 : 0;
   node.binaryRightCount = node.rightChild ? 1 : 0;
-  const legsFull = Boolean(node.leftChild && node.rightChild);
-  const canPairMatch = legsFull && (await bothLegsAreDirectRecruits(nodeId, session));
+  const canPairMatch = Boolean(node.leftChild && node.rightChild);
   const wasMatched = Boolean(node.pairMatched);
 
   node.pairMatched = canPairMatch;
@@ -69,7 +53,7 @@ async function refreshNodeBinaryState(nodeId, session) {
     await addIncome(node._id, BINARY_AMOUNT_PER_PAIR, 'binary', node._id, session, {
       pairs: 1,
       perPair: BINARY_AMOUNT_PER_PAIR,
-      reason: 'binary pair matched (direct sponsor legs)',
+      reason: 'binary pair matched (both legs filled)',
     });
     await User.findByIdAndUpdate(
       node._id,
@@ -140,18 +124,18 @@ export async function assertPlacementSafe(userId, placementParentId, session = n
 }
 
 /**
- * Queue-based BFS from the sponsor root:
- * 1) Fill sponsor LEFT, then sponsor RIGHT (direct legs — eligible for pair matching).
- * 2) After sponsor is full, spill one-directionally inside the sponsor's LEFT subtree only.
+ * One-directional binary placement scoped to the registration sponsor node:
+ * 1) Always fill that sponsor's LEFT, then RIGHT (direct legs — eligible for pair matching).
+ * 2) Only when both direct legs are full, spill down the sponsor's LEFT chain and place on the first open LEFT slot.
  */
-export async function findAvailableParent(rootSponsorId, session = null) {
-  if (!mongoose.isValidObjectId(rootSponsorId)) {
+export async function findAvailableParent(registrationSponsorId, session = null) {
+  if (!mongoose.isValidObjectId(registrationSponsorId)) {
     const err = new Error('Invalid sponsor id');
     err.statusCode = 400;
     throw err;
   }
 
-  const sponsorQuery = User.findById(rootSponsorId)
+  const sponsorQuery = User.findById(registrationSponsorId)
     .select('_id leftChild rightChild placementFrozen')
     .lean();
   const sponsor = session ? await sponsorQuery.session(session) : await sponsorQuery;
@@ -161,42 +145,35 @@ export async function findAvailableParent(rootSponsorId, session = null) {
     throw err;
   }
 
-  if (!sponsor.placementFrozen) {
-    if (!sponsor.leftChild) {
-      return { parentId: sponsor._id, placementSide: 'left' };
-    }
-    if (!sponsor.rightChild) {
-      return { parentId: sponsor._id, placementSide: 'right' };
-    }
-  }
-
   if (!sponsor.leftChild) {
-    const err = new Error('No eligible placement found under sponsor subtree');
-    err.statusCode = 422;
-    throw err;
+    return { parentId: sponsor._id, placementSide: 'left' };
+  }
+  if (!sponsor.rightChild) {
+    return { parentId: sponsor._id, placementSide: 'right' };
   }
 
-  const queue = [sponsor.leftChild];
+  let currentId = sponsor.leftChild;
   let scanned = 0;
 
-  while (queue.length > 0 && scanned < MAX_PLACEMENT_TRAVERSAL) {
+  while (currentId && scanned < MAX_PLACEMENT_TRAVERSAL) {
     scanned += 1;
-    const currentId = queue.shift();
     const nodeQuery = User.findById(currentId)
       .select('_id leftChild rightChild placementFrozen')
       .lean();
     const node = session ? await nodeQuery.session(session) : await nodeQuery;
-    if (!node || node.placementFrozen) continue;
+    if (!node) break;
 
-    if (!node.leftChild) {
+    if (!node.placementFrozen && !node.leftChild) {
       return { parentId: node._id, placementSide: 'left' };
     }
-    if (!node.rightChild) {
-      return { parentId: node._id, placementSide: 'right' };
+
+    if (!node.leftChild) {
+      const err = new Error('No eligible placement found under sponsor left chain');
+      err.statusCode = 422;
+      throw err;
     }
 
-    if (node.leftChild) queue.push(node.leftChild);
-    if (node.rightChild) queue.push(node.rightChild);
+    currentId = node.leftChild;
   }
 
   const err = new Error('No eligible placement found under sponsor subtree');
@@ -329,7 +306,7 @@ export async function placeUserUnderSponsor({
           toIndex: sequence,
           movedBy: actorUserId,
           movedAt: new Date(),
-          reason: reason || 'bfs auto placement',
+          reason: reason || 'left-chain auto placement',
         });
         await user.save({ session: activeSession });
 

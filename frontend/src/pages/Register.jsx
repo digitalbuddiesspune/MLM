@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { register as registerApi, setAuth, getDashboardPathForRole } from '../api/auth.js';
+import PasswordInput from '../components/PasswordInput.jsx';
 
 function digitsOnly(value) {
   return String(value ?? '').replace(/\D/g, '');
@@ -47,7 +48,7 @@ export default function Register() {
   };
 
   return (
-    <section className="mx-auto max-w-lg px-4 py-16 sm:px-6 lg:px-8">
+    <section className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
       <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
         <h1 className="text-2xl font-bold text-slate-900">Register</h1>
         <p className="mt-1 text-slate-600">Create your account to join the network.</p>
@@ -58,7 +59,7 @@ export default function Register() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-slate-700">Full name <span className="text-red-500">*</span></label>
             <input
@@ -101,18 +102,16 @@ export default function Register() {
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password <span className="text-red-500">*</span></label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="new-password"
               disabled={loading}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:opacity-60"
             />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label htmlFor="sponsorId" className="block text-sm font-medium text-slate-700">Sponsor referral code <span className="text-red-500">*</span></label>
             <input
               id="sponsorId"
@@ -132,7 +131,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-teal-600 px-4 py-3 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            className="sm:col-span-2 w-full rounded-lg bg-teal-600 px-4 py-3 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
             {loading ? 'Creating account…' : 'Create account'}
           </button>
