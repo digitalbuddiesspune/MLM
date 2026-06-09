@@ -34,6 +34,12 @@ export async function getBinaryGenealogy(memberId, params = {}) {
   return data;
 }
 
+export async function getOpenPlacementSlots(sponsorId) {
+  const params = sponsorId ? { sponsorId } : undefined;
+  const { data } = await api.get('/tree/open-slots', { params });
+  return data;
+}
+
 export async function placeMyReferralInTree(payload) {
   const { data } = await api.post('/tree/place', payload);
   return data;

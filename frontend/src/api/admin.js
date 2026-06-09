@@ -51,6 +51,17 @@ export async function getTreeById(id, params = {}) {
   return data;
 }
 
+export async function getUnplacedUsers() {
+  const { data } = await api.get('/tree/unplaced-users');
+  return data;
+}
+
+export async function getOpenPlacementSlots(sponsorId) {
+  const params = sponsorId ? { sponsorId } : undefined;
+  const { data } = await api.get('/tree/open-slots', { params });
+  return data;
+}
+
 export async function placeTreeUser(payload) {
   const { data } = await api.post('/tree/place', payload);
   return data;

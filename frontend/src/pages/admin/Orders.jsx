@@ -14,6 +14,20 @@ const FULFILLMENT_OPTIONS = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+function shippingAddressToText(address) {
+  if (!address?.fullName) return '';
+  const cityLine = [address.tehsil, address.district].filter(Boolean).join(', ');
+  const cityWithPin = cityLine + (address.pincode ? ` — ${address.pincode}` : '');
+  return [
+    `${address.fullName} (${address.phone})`,
+    address.streetAddress,
+    cityWithPin || null,
+    address.state,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 function formatShippingAddress(address) {
   if (!address?.fullName) return null;
   return (
@@ -28,6 +42,47 @@ function formatShippingAddress(address) {
       </p>
       {address.state ? <p className="text-xs text-slate-500">{address.state}</p> : null}
     </>
+  );
+}
+
+function CopyAddressButton({ address }) {
+  const [copied, setCopied] = useState(false);
+  const text = shippingAddressToText(address);
+  if (!text) return null;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const input = document.createElement('input');
+      input.value = text;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="Copy address"
+      className="shrink-0 rounded-md border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+      aria-label="Copy shipping address"
+    >
+      {copied ? (
+        <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      )}
+    </button>
   );
 }
 
@@ -206,9 +261,16 @@ export default function AdminOrders() {
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{order.productSnapshot?.name ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">
-                    {formatShippingAddress(order.shippingAddress) ?? (
-                      <span className="text-slate-400">—</span>
-                    )}
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        {formatShippingAddress(order.shippingAddress) ?? (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </div>
+                      {order.shippingAddress?.fullName ? (
+                        <CopyAddressButton address={order.shippingAddress} />
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">Rs {order.amount?.toLocaleString() ?? 0}</td>
                   <td className="px-4 py-3">

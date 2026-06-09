@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import {
+  findOpenSlotsInSubtree,
   placeUserUnderSponsor,
   setPlacementSide,
 } from '../services/placementService.js';
+import { isBinaryDescendantOrSelf } from '../services/treeQueryService.js';
 import { moveNode } from '../services/dragDropService.js';
 import {
   buildSponsorTree,
@@ -22,15 +24,89 @@ function asObjectId(id, label = 'id') {
 }
 
 /**
+ * GET /api/tree/unplaced-users
+ * Admin: users with a sponsor but not yet placed in the binary tree.
+ */
+export async function getUnplacedUsers(req, res, next) {
+  try {
+    const actor = await User.findById(req.userId).select('_id role').lean();
+    if (!actor) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+    if (actor.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+
+    const users = await User.find({
+      sponsorId: { $ne: null },
+      parentId: null,
+      role: { $ne: 'admin' },
+    })
+      .select('_id name email mobile referralNumber sponsorId createdAt')
+      .populate('sponsorId', 'name referralNumber')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        users: users.map((u) => ({
+          ...u,
+          sponsorId: u.sponsorId?._id ?? u.sponsorId,
+          sponsor: u.sponsorId && typeof u.sponsorId === 'object'
+            ? {
+                _id: u.sponsorId._id,
+                name: u.sponsorId.name,
+                referralNumber: u.sponsorId.referralNumber,
+              }
+            : null,
+        })),
+        total: users.length,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/tree/open-slots?sponsorId=
+ * Lists open LEFT/RIGHT legs in a sponsor's binary subtree (defaults to logged-in user).
+ */
+export async function getOpenSlots(req, res, next) {
+  try {
+    const actor = await User.findById(req.userId).select('_id role').lean();
+    if (!actor) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const rawSponsorId = req.query.sponsorId ?? req.userId;
+    asObjectId(rawSponsorId, 'sponsorId');
+
+    const isAdmin = actor.role === 'admin';
+    if (!isAdmin && String(rawSponsorId) !== String(actor._id)) {
+      return res.status(403).json({ success: false, error: 'You can only view open slots in your own binary subtree' });
+    }
+
+    const slots = await findOpenSlotsInSubtree(rawSponsorId);
+    res.json({ success: true, data: { slots, total: slots.length } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * POST /api/tree/place
- * Body: { userId, sponsorId, side?: 'left'|'right' }
- * Admin places an existing user under a sponsor. Sets placementSide; default 'left'.
+ * Body: { userId, sponsorId, parentId?, side?: 'left'|'right' }
+ * Sponsors must pass parentId + side to choose an open end-node leg.
+ * Admins may omit parentId to auto-place or set parentId + side for manual placement.
  */
 export async function postPlace(req, res, next) {
   try {
-    const { userId, sponsorId, side } = req.body ?? {};
+    const { userId, sponsorId, parentId, side } = req.body ?? {};
     asObjectId(userId, 'userId');
     asObjectId(sponsorId, 'sponsorId');
+    if (parentId) asObjectId(parentId, 'parentId');
 
     const [actor, candidate] = await Promise.all([
       User.findById(req.userId).select('_id role').lean(),
@@ -55,13 +131,25 @@ export async function postPlace(req, res, next) {
       if (!candidate.sponsorId || String(candidate.sponsorId) !== actorId) {
         return res.status(403).json({ success: false, error: 'You can only place users registered with your referral code' });
       }
+      const inSubtree = await isBinaryDescendantOrSelf(sponsorId, parentId);
+      if (!inSubtree) {
+        return res.status(403).json({ success: false, error: 'Selected slot is outside your binary subtree' });
+      }
+    }
+
+    if (!parentId || (side !== 'left' && side !== 'right')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Choose an open slot: parentId and side (left or right) are required',
+      });
     }
 
     const result = await placeUserUnderSponsor({
       userId,
       sponsorId,
+      placementParentId: parentId ?? null,
       preferredSide: side ?? null,
-      manualPlacement: Boolean(side),
+      manualPlacement: Boolean(parentId && side) || Boolean(side),
       actorUserId: req.userId,
       reason: req.body?.reason || (isAdmin ? 'admin manual placement' : 'sponsor manual placement'),
     });

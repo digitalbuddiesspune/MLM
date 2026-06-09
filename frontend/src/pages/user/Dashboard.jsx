@@ -3,7 +3,13 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
-import { getMyWallet, getMyTransactions, getMyTeam, placeMyReferralInTree } from '../../api/user.js';
+import {
+  getMyWallet,
+  getMyTransactions,
+  getMyTeam,
+  getOpenPlacementSlots,
+  placeMyReferralInTree,
+} from '../../api/user.js';
 import { getCart } from '../../api/cart.js';
 import { formatBinaryMatchingDetail } from '../../utils/ledgerDisplay.js';
 
@@ -13,10 +19,14 @@ const DashboardIcon = () => (
   </svg>
 );
 
+function slotKey(parentId, side) {
+  return `${parentId}:${side}`;
+}
+
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
-  const [sideByUserId, setSideByUserId] = useState({});
+  const [slotByUserId, setSlotByUserId] = useState({});
   const [placeMessage, setPlaceMessage] = useState('');
   const user = getStoredUser();
 
@@ -54,6 +64,13 @@ export default function Dashboard() {
     () => (teamQuery.data?.data?.users ?? []).filter((u) => !u.parentId),
     [teamQuery.data]
   );
+
+  const { data: openSlotsPayload, isLoading: slotsLoading } = useQuery({
+    queryKey: ['tree-open-slots', user?._id],
+    queryFn: () => getOpenPlacementSlots(user?._id),
+    enabled: Boolean(user?._id) && unplacedReferrals.length > 0,
+  });
+  const openSlots = openSlotsPayload?.data?.slots ?? [];
 
   const referralCode =
     walletQuery.data?.data?.referralNumber != null
@@ -93,15 +110,17 @@ export default function Dashboard() {
   }, [transactionsQuery.data]);
 
   const placeMutation = useMutation({
-    mutationFn: ({ userId, side }) =>
+    mutationFn: ({ userId, parentId, side }) =>
       placeMyReferralInTree({
         userId,
         sponsorId: user?._id,
-        ...(side ? { side } : {}),
+        parentId,
+        side,
       }),
     onSuccess: () => {
       setPlaceMessage('User placed in binary tree successfully.');
       queryClient.invalidateQueries({ queryKey: ['user-dashboard', 'team'] });
+      queryClient.invalidateQueries({ queryKey: ['tree-open-slots'] });
       queryClient.invalidateQueries({ queryKey: ['binary-tree-flow'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'my-orders'] });
     },
@@ -126,6 +145,17 @@ export default function Dashboard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handlePlace = (member) => {
+    const selected = slotByUserId[member._id];
+    if (!selected) {
+      setPlaceMessage('Choose an open slot in your binary tree first.');
+      return;
+    }
+    const [parentId, side] = selected.split(':');
+    setPlaceMessage('');
+    placeMutation.mutate({ userId: member._id, parentId, side });
   };
 
   return (
@@ -257,7 +287,7 @@ export default function Dashboard() {
       <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Place referred users in binary tree</h2>
         <p className="mt-1 text-xs text-slate-600">
-          You can place only users who registered using your referral code.
+          New members stay unplaced until you choose an open left or right slot at any end node in your tree.
         </p>
 
         {placeMessage ? (
@@ -268,39 +298,57 @@ export default function Dashboard() {
 
         {unplacedReferrals.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">No pending referred users to place.</p>
+        ) : slotsLoading ? (
+          <p className="mt-3 text-sm text-slate-500">Loading open slots…</p>
+        ) : openSlots.length === 0 ? (
+          <p className="mt-3 text-sm text-amber-700">No open slots in your binary tree yet.</p>
         ) : (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-3">
             {unplacedReferrals.map((member) => (
               <div
                 key={member._id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2"
+                className="rounded-lg border border-slate-200 px-3 py-3"
               >
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{member.name}</p>
-                  <p className="text-xs text-slate-500">{member.email}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={sideByUserId[member._id] ?? ''}
-                    onChange={(e) => {
-                      setSideByUserId((prev) => ({ ...prev, [member._id]: e.target.value }));
-                    }}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{member.name}</p>
+                    <p className="text-xs text-slate-500">{member.email}</p>
+                  </div>
+                  <Link
+                    to={`/user/binary-tree?placeUserId=${encodeURIComponent(member._id)}`}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
                   >
-                    <option value="">Auto</option>
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                  </select>
+                    Pick on tree →
+                  </Link>
+                </div>
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <label className="min-w-[220px] flex-1 text-xs font-medium text-slate-600">
+                    Open slot
+                    <select
+                      value={slotByUserId[member._id] ?? ''}
+                      onChange={(e) => {
+                        setSlotByUserId((prev) => ({ ...prev, [member._id]: e.target.value }));
+                      }}
+                      className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+                    >
+                      <option value="">Select end node…</option>
+                      {openSlots.map((slot) => (
+                        <option
+                          key={slotKey(slot.parentId, slot.side)}
+                          value={slotKey(slot.parentId, slot.side)}
+                        >
+                          {slot.parentName} (ID {slot.parentReferralNumber ?? '—'}) — {slot.side.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <button
                     type="button"
-                    onClick={() => {
-                      setPlaceMessage('');
-                      placeMutation.mutate({ userId: member._id, side: sideByUserId[member._id] ?? '' });
-                    }}
-                    disabled={placeMutation.isPending}
-                    className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                    onClick={() => handlePlace(member)}
+                    disabled={placeMutation.isPending || !slotByUserId[member._id]}
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                   >
-                    Place
+                    Place here
                   </button>
                 </div>
               </div>

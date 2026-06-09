@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { addIncome } from './walletService.js';
+import { isBinaryDescendantOrSelf } from './treeQueryService.js';
 
 export const BINARY_AMOUNT_PER_PAIR = 150;
 export const DEFAULT_PLACEMENT_SIDE = 'left';
@@ -184,6 +185,163 @@ export async function findAvailableParent(registrationSponsorId, session = null)
 /** @deprecated use findAvailableParent */
 export const findNextEligiblePlacement = findAvailableParent;
 
+/**
+ * Lists every open LEFT/RIGHT leg in the binary subtree rooted at `rootUserId`.
+ */
+export async function findOpenSlotsInSubtree(rootUserId, session = null) {
+  if (!mongoose.isValidObjectId(rootUserId)) {
+    const err = new Error('Invalid subtree root id');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const slots = [];
+  const queue = [String(rootUserId)];
+  const visited = new Set(queue);
+  let scanned = 0;
+
+  while (queue.length > 0 && scanned < MAX_PLACEMENT_TRAVERSAL) {
+    scanned += 1;
+    const id = queue.shift();
+    const nodeQuery = User.findById(id)
+      .select('_id name referralNumber leftChild rightChild placementFrozen')
+      .lean();
+    const node = session ? await nodeQuery.session(session) : await nodeQuery;
+    if (!node) continue;
+
+    if (!node.placementFrozen) {
+      if (!node.leftChild) {
+        slots.push({
+          parentId: String(node._id),
+          parentName: node.name ?? '—',
+          parentReferralNumber: node.referralNumber ?? null,
+          side: 'left',
+        });
+      }
+      if (!node.rightChild) {
+        slots.push({
+          parentId: String(node._id),
+          parentName: node.name ?? '—',
+          parentReferralNumber: node.referralNumber ?? null,
+          side: 'right',
+        });
+      }
+    }
+
+    for (const childId of [node.leftChild, node.rightChild].filter(Boolean)) {
+      const key = String(childId);
+      if (!visited.has(key)) {
+        visited.add(key);
+        queue.push(key);
+      }
+    }
+  }
+
+  return slots;
+}
+
+/**
+ * Sponsor-chosen placement at a specific open leg under `placementParentId`.
+ */
+export async function placeUserAtSlot({
+  userId,
+  sponsorId,
+  placementParentId,
+  side,
+  session = null,
+  actorUserId = null,
+  reason = 'sponsor manual slot placement',
+}) {
+  ensureValidSide(side);
+  if (!side) {
+    const err = new Error('Placement side is required');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!mongoose.isValidObjectId(placementParentId)) {
+    const err = new Error('Invalid placement parent id');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const inSubtree = await isBinaryDescendantOrSelf(sponsorId, placementParentId, session);
+  if (!inSubtree) {
+    const err = new Error('Placement parent is outside the sponsor binary subtree');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const ownSession = !session;
+  const activeSession = session ?? (await mongoose.startSession());
+  if (ownSession) activeSession.startTransaction();
+
+  try {
+    const user = await User.findById(userId).session(activeSession);
+    if (!user) {
+      const err = new Error('User not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (user.parentId) {
+      const err = new Error('User is already placed in the binary tree');
+      err.statusCode = 422;
+      throw err;
+    }
+
+    await assertPlacementSafe(userId, placementParentId, activeSession);
+
+    const claimed = await atomicClaimBinarySlot(placementParentId, side, user._id, activeSession);
+    if (!claimed) {
+      const err = new Error(`${side.toUpperCase()} leg is already occupied`);
+      err.statusCode = 409;
+      throw err;
+    }
+
+    const sequence = await nextPlacementSequence(activeSession);
+    user.sponsorId = sponsorId;
+    user.directSponsor = sponsorId;
+    user.parentId = placementParentId;
+    user.placementSide = side;
+    user.placementIndex = sequence;
+    user.placementSequence = sequence;
+    user.activePlacement = true;
+    user.binaryStatus = 'open_left';
+    user.manualPlacement = true;
+    user.placementHistory.push({
+      fromSponsorId: null,
+      toSponsorId: placementParentId,
+      fromSide: null,
+      toSide: side,
+      fromIndex: null,
+      toIndex: sequence,
+      movedBy: actorUserId,
+      movedAt: new Date(),
+      reason,
+    });
+    await user.save({ session: activeSession });
+
+    const pairCredit = await refreshNodeBinaryState(placementParentId, activeSession);
+
+    if (ownSession) await activeSession.commitTransaction();
+
+    return {
+      placement: {
+        userId: String(user._id),
+        sponsorId: String(sponsorId),
+        parentId: String(placementParentId),
+        placementSide: side,
+        placementSequence: sequence,
+      },
+      pairCredit,
+    };
+  } catch (err) {
+    if (ownSession) await activeSession.abortTransaction().catch(() => {});
+    throw err;
+  } finally {
+    if (ownSession) await activeSession.endSession();
+  }
+}
+
 /** MLM pairing math exposed for reporting / dashboards. */
 export function calculateMatchingBonus(matchesCount = 1) {
   const n = Math.max(0, Number(matchesCount) || 0);
@@ -197,6 +355,7 @@ export function calculateMatchingBonus(matchesCount = 1) {
 export async function placeUserUnderSponsor({
   userId,
   sponsorId,
+  placementParentId = null,
   preferredSide = null,
   manualPlacement = false,
   session = null,
@@ -204,6 +363,18 @@ export async function placeUserUnderSponsor({
   reason = '',
 }) {
   ensureValidSide(preferredSide);
+
+  if (placementParentId && preferredSide) {
+    return placeUserAtSlot({
+      userId,
+      sponsorId,
+      placementParentId,
+      side: preferredSide,
+      session,
+      actorUserId,
+      reason: reason || 'manual slot placement',
+    });
+  }
 
   const ownSession = !session;
   const activeSession = session ?? (await mongoose.startSession());

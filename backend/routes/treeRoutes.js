@@ -3,6 +3,8 @@ import {
   postPlace,
   postManualPlace,
   postDragDrop,
+  getUnplacedUsers,
+  getOpenSlots,
   getTree,
   getDownline,
   getPairs,
@@ -14,6 +16,8 @@ import { sensitiveMutationLimiter } from '../middleware/rateLimiter.js';
 const router = Router();
 
 /* Placement: admin or sponsor owner. */
+router.get('/unplaced-users', requireAuth, getUnplacedUsers);
+router.get('/open-slots', requireAuth, getOpenSlots);
 router.post('/place', sensitiveMutationLimiter, requireAuth, postPlace);
 /* Admin-only mutations. */
 router.post('/manual-place', sensitiveMutationLimiter, requireAuth, requireAdmin, postManualPlace);
