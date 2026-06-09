@@ -32,9 +32,9 @@ function OpenSlotButton({ side, onPlace, disabled }) {
       type="button"
       disabled={disabled}
       onClick={onPlace}
-      className="min-w-[120px] rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50 px-3 py-4 text-center text-xs font-semibold text-indigo-700 hover:border-indigo-400 hover:bg-indigo-100 disabled:opacity-60"
+      className="min-w-[72px] max-w-[88px] rounded border border-dashed border-indigo-300 bg-indigo-50 px-1.5 py-2 text-center text-[9px] font-semibold leading-tight text-indigo-700 hover:border-indigo-400 hover:bg-indigo-100 disabled:opacity-60"
     >
-      + Place {side}
+      + {side}
     </button>
   );
 }
@@ -76,8 +76,8 @@ function TreeNode({
     const isOpen = placementMode && openSlotKeys?.has(key) && !child;
 
     return (
-      <div className="flex min-w-[120px] flex-col items-center">
-        <div className="h-4 w-px bg-slate-300" />
+      <div className="flex min-w-[72px] flex-col items-center">
+        <div className="h-2.5 w-px bg-slate-300" />
         {child ? (
           <TreeNode
             node={child}
@@ -99,8 +99,8 @@ function TreeNode({
             onPlace={() => onPlaceSlot?.(nodeId, side)}
           />
         ) : (
-          <div className="min-w-[120px] rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[10px] text-slate-400">
-            Empty {side}
+          <div className="min-w-[72px] max-w-[88px] rounded border border-dashed border-slate-200 px-1.5 py-2 text-center text-[8px] text-slate-400">
+            {side}
           </div>
         )}
       </div>
@@ -110,7 +110,7 @@ function TreeNode({
   return (
     <div className="flex flex-col items-center">
       <div
-        className={`relative min-w-[120px] rounded-lg border px-3 py-2 text-center shadow-sm ${
+        className={`relative min-w-[72px] max-w-[96px] rounded border px-1.5 py-1 text-center shadow-sm ${
           level === 0
             ? 'border-blue-300 bg-blue-50'
             : isHighlighted
@@ -118,28 +118,28 @@ function TreeNode({
               : 'border-slate-200 bg-white'
         }`}
       >
-        <p className="truncate text-sm font-semibold text-slate-900">{node.name ?? '—'}</p>
-        <p className="mt-0.5 text-[11px] font-mono text-slate-500">ID {node.referralNumber ?? '—'}</p>
-        <p className="mt-1 text-[10px] uppercase text-slate-500">
-          {level === 0 ? 'Root / Sponsor' : (node.placementSide ?? 'Node')}
+        <p className="truncate text-[10px] font-semibold leading-tight text-slate-900">{node.name ?? '—'}</p>
+        <p className="mt-0.5 text-[8px] font-mono text-slate-500">{node.referralNumber ?? '—'}</p>
+        <p className="mt-0.5 text-[7px] uppercase leading-tight text-slate-500">
+          {level === 0 ? 'Root' : (node.placementSide ?? '—')}
         </p>
         {hasDescendants ? (
           <button
             type="button"
             onClick={() => onToggleNodeCollapse(nodeId)}
-            className="mt-2 rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"
+            className="mt-1 rounded border border-slate-200 px-1 py-px text-[7px] font-semibold text-slate-600 hover:bg-slate-50"
             aria-expanded={!isNodeCollapsed}
           >
-            {isNodeCollapsed ? 'Expand' : 'Collapse'}
+            {isNodeCollapsed ? '+' : '−'}
           </button>
         ) : null}
       </div>
 
       {showLegs && (
         <>
-          <div className="h-5 w-px bg-slate-300" />
+          <div className="h-3 w-px bg-slate-300" />
           <div className="w-full border-t border-slate-300" />
-          <div className="mt-2 flex items-start justify-center gap-8">
+          <div className="mt-1 flex items-start justify-center gap-4">
             {renderLeg('left', leftChild)}
             {renderLeg('right', rightChild)}
           </div>
@@ -512,7 +512,7 @@ export default function BinaryTree() {
           </p>
         )}
         {!treeQuery.isLoading && tree && (
-          <div className="min-w-[760px] p-4">
+          <div className="min-w-[480px] p-2 sm:p-3">
             <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-slate-100 pb-4">
               <span className="text-xs font-medium text-slate-500">Collapse by level:</span>
               {Array.from({ length: levelCount }, (_, levelIndex) => {
