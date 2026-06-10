@@ -108,7 +108,7 @@ function TreeNode({
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="inline-flex flex-col items-center">
       <div
         className={`relative min-w-[72px] max-w-[96px] rounded border px-1.5 py-1 text-center shadow-sm ${
           level === 0
@@ -139,7 +139,7 @@ function TreeNode({
         <>
           <div className="h-3 w-px bg-slate-300" />
           <div className="w-full border-t border-slate-300" />
-          <div className="mt-1 flex items-start justify-center gap-4">
+          <div className="mt-1 flex items-start justify-center gap-6 sm:gap-10">
             {renderLeg('left', leftChild)}
             {renderLeg('right', rightChild)}
           </div>
@@ -313,7 +313,7 @@ export default function BinaryTree() {
   };
 
   return (
-    <div className="min-h-screen space-y-5 px-4 py-6 sm:px-6 lg:max-w-[1500px]">
+    <div className="min-h-screen w-full max-w-full space-y-5 px-4 py-6 sm:px-6">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           Binary Tree
@@ -493,14 +493,14 @@ export default function BinaryTree() {
       )}
 
       {/* Flow */}
-      <section className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:p-4">
+      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
         {treeQuery.isLoading && (
           <div className="flex items-center justify-center py-28 text-sm text-slate-500">
             Loading tree...
           </div>
         )}
         {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-700">
+          <div className="m-4 rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-700">
             {typeof error === 'string' ? error : 'Something went wrong'}
           </div>
         ) : null}
@@ -512,55 +512,64 @@ export default function BinaryTree() {
           </p>
         )}
         {!treeQuery.isLoading && tree && (
-          <div className="min-w-[480px] p-2 sm:p-3">
-            <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-slate-100 pb-4">
-              <span className="text-xs font-medium text-slate-500">Collapse by level:</span>
-              {Array.from({ length: levelCount }, (_, levelIndex) => {
-                const isCollapsed = collapsedLevels.has(levelIndex);
-                return (
-                  <button
-                    key={levelIndex}
-                    type="button"
-                    onClick={() => toggleLevelCollapse(levelIndex)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                      isCollapsed
-                        ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                    aria-expanded={!isCollapsed}
-                  >
-                    Level {levelIndex + 1}
-                    <span className="ml-1">{isCollapsed ? '▸' : '▾'}</span>
-                  </button>
-                );
-              })}
-              {(collapsedLevels.size > 0 || collapsedNodeIds.size > 0) && (
-                <button
-                  type="button"
-                  onClick={expandAllLevels}
-                  className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100"
-                >
-                  Expand all
-                </button>
-              )}
+          <>
+            <div className="border-b border-slate-100 px-4 py-3">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+                <span className="shrink-0 text-xs font-medium text-slate-500">Collapse by level:</span>
+                <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
+                  {Array.from({ length: levelCount }, (_, levelIndex) => {
+                    const isCollapsed = collapsedLevels.has(levelIndex);
+                    return (
+                      <button
+                        key={levelIndex}
+                        type="button"
+                        onClick={() => toggleLevelCollapse(levelIndex)}
+                        className={`shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
+                          isCollapsed
+                            ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                        aria-expanded={!isCollapsed}
+                      >
+                        Level {levelIndex + 1}
+                        <span className="ml-0.5">{isCollapsed ? '▸' : '▾'}</span>
+                      </button>
+                    );
+                  })}
+                  {(collapsedLevels.size > 0 || collapsedNodeIds.size > 0) && (
+                    <button
+                      type="button"
+                      onClick={expandAllLevels}
+                      className="shrink-0 whitespace-nowrap rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800 hover:bg-teal-100"
+                    >
+                      Expand all
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="mt-1.5 text-[10px] text-slate-400">Scroll horizontally ← → to see all nodes</p>
             </div>
-            <TreeNode
-              node={tree}
-              level={0}
-              maxVisibleLevel={effectiveVisibleLevels}
-              highlightedId={jumpHighlightId}
-              collapsedLevels={collapsedLevels}
-              collapsedNodeIds={collapsedNodeIds}
-              onToggleNodeCollapse={toggleNodeCollapse}
-              placementMode={Boolean(placeUserId) && (isAdminView ? Boolean(placeMember) : true)}
-              openSlotKeys={openSlotKeys}
-              placing={placeMutation.isPending}
-              onPlaceSlot={(parentId, side) => {
-                setPlaceMessage('');
-                placeMutation.mutate({ parentId, side });
-              }}
-            />
-          </div>
+            <div className="max-w-full overflow-x-auto overflow-y-visible overscroll-x-contain">
+              <div className="inline-block min-w-full w-max px-6 py-4">
+                <TreeNode
+                  node={tree}
+                  level={0}
+                  maxVisibleLevel={effectiveVisibleLevels}
+                  highlightedId={jumpHighlightId}
+                  collapsedLevels={collapsedLevels}
+                  collapsedNodeIds={collapsedNodeIds}
+                  onToggleNodeCollapse={toggleNodeCollapse}
+                  placementMode={Boolean(placeUserId) && (isAdminView ? Boolean(placeMember) : true)}
+                  openSlotKeys={openSlotKeys}
+                  placing={placeMutation.isPending}
+                  onPlaceSlot={(parentId, side) => {
+                    setPlaceMessage('');
+                    placeMutation.mutate({ parentId, side });
+                  }}
+                />
+              </div>
+            </div>
+          </>
         )}
       </section>
     </div>

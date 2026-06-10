@@ -48,7 +48,10 @@ export default function UserMyHierarchy() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">My Hierarchy</h1>
-      <p className="mt-1 text-slate-600">Users joined using your referral ID, grouped level by level.</p>
+      <p className="mt-1 text-slate-600">
+        Sponsor referral chain under you. Level 1 = users who joined with your referral ID; Level 2 = users who
+        joined with Level 1 members’ referral IDs, and so on.
+      </p>
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading...</p>}
       {message && <div className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{message}</div>}
       {!isLoading && !message && (

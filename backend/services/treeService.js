@@ -60,9 +60,41 @@ export function shapeCanonicalBinaryPayload(internalRoot) {
   };
 }
 
+function shapeTreeNode(doc, depth) {
+  return {
+    id: String(doc._id),
+    name: doc.name ?? '—',
+    email: doc.email ?? null,
+    mobile: doc.mobile ?? null,
+    referralNumber: doc.referralNumber ?? null,
+    role: doc.role ?? 'user',
+    isActive: !!doc.isActive,
+    sponsorId: doc.sponsorId ? String(doc.sponsorId) : null,
+    directSponsor: doc.directSponsor ? String(doc.directSponsor) : null,
+    parentId: doc.parentId ? String(doc.parentId) : null,
+    leftChild: doc.leftChild ? String(doc.leftChild) : null,
+    rightChild: doc.rightChild ? String(doc.rightChild) : null,
+    placementSide: doc.placementSide ?? null,
+    placementIndex: doc.placementIndex ?? 0,
+    placementSequence: doc.placementSequence ?? 0,
+    pairMatched: !!doc.pairMatched,
+    activePlacement: !!doc.activePlacement,
+    binaryStatus: doc.binaryStatus ?? 'open_left',
+    binaryLeftCount: doc.binaryLeftCount ?? 0,
+    binaryRightCount: doc.binaryRightCount ?? 0,
+    pairCount: doc.pairCount ?? 0,
+    binaryIncome: doc.binaryIncome ?? 0,
+    manualPlacement: !!doc.manualPlacement,
+    placementFrozen: !!doc.placementFrozen,
+    package: null,
+    level: depth,
+    children: [],
+  };
+}
+
 /**
- * Builds the binary placement tree rooted at `userId`.
- * Children = leftChild/rightChild pointers.
+ * Sponsor referral chain: Level 1 = users who registered with root's referral ID;
+ * Level 2 = users who registered with a Level 1 member's referral ID; and so on.
  *
  * @param {import('mongoose').Types.ObjectId|string} userId
  * @param {number} [maxDepth=6]
@@ -74,63 +106,57 @@ export async function getReferralTree(userId, maxDepth = 6, opts = {}) {
   const root = await User.findById(userId).select(FIELDS_FOR_TREE).lean();
   if (!root) return null;
 
-  function shape(doc, depth) {
-    return {
-      id: String(doc._id),
-      name: doc.name ?? '—',
-      email: doc.email ?? null,
-      mobile: doc.mobile ?? null,
-      referralNumber: doc.referralNumber ?? null,
-      role: doc.role ?? 'user',
-      isActive: !!doc.isActive,
-      sponsorId: doc.sponsorId ? String(doc.sponsorId) : null,
-      directSponsor: doc.directSponsor ? String(doc.directSponsor) : null,
-      parentId: doc.parentId ? String(doc.parentId) : null,
-      leftChild: doc.leftChild ? String(doc.leftChild) : null,
-      rightChild: doc.rightChild ? String(doc.rightChild) : null,
-      placementSide: doc.placementSide ?? null,
-      placementIndex: doc.placementIndex ?? 0,
-      placementSequence: doc.placementSequence ?? 0,
-      pairMatched: !!doc.pairMatched,
-      activePlacement: !!doc.activePlacement,
-      binaryStatus: doc.binaryStatus ?? 'open_left',
-      binaryLeftCount: doc.binaryLeftCount ?? 0,
-      binaryRightCount: doc.binaryRightCount ?? 0,
-      pairCount: doc.pairCount ?? 0,
-      binaryIncome: doc.binaryIncome ?? 0,
-      manualPlacement: !!doc.manualPlacement,
-      placementFrozen: !!doc.placementFrozen,
-      package: null,
-      level: depth,
-      children: [],
-    };
-  }
+  const rootNode = shapeTreeNode(root, 0);
+  let frontier = [rootNode];
 
-  const rootNode = shape(root, 0);
+  for (let depth = 0; depth < maxDepth && frontier.length > 0; depth += 1) {
+    const parentIds = frontier.map((node) => new mongoose.Types.ObjectId(node.id));
+    const children = await User.find({ sponsorId: { $in: parentIds } })
+      .select(FIELDS_FOR_TREE)
+      .sort({ createdAt: 1 })
+      .lean();
 
-  async function expand(node, depth) {
-    if (depth >= maxDepth) return;
-    const ids = [node.leftChild, node.rightChild].filter(Boolean);
-    if (ids.length === 0) return;
-    const children = await User.find({ _id: { $in: ids } }).select(FIELDS_FOR_TREE).lean();
-    const byId = new Map(children.map((child) => [String(child._id), child]));
-    for (const id of ids) {
-      const child = byId.get(String(id));
-      if (!child) continue;
-      const childNode = shape(child, depth + 1);
-      node.children.push(childNode);
-      await expand(childNode, depth + 1);
+    const bySponsorId = new Map();
+    for (const doc of children) {
+      const sponsorKey = String(doc.sponsorId);
+      if (!bySponsorId.has(sponsorKey)) bySponsorId.set(sponsorKey, []);
+      bySponsorId.get(sponsorKey).push(doc);
     }
+
+    const nextFrontier = [];
+    for (const parent of frontier) {
+      for (const doc of bySponsorId.get(parent.id) ?? []) {
+        const childNode = shapeTreeNode(doc, depth + 1);
+        parent.children.push(childNode);
+        nextFrontier.push(childNode);
+      }
+    }
+    frontier = nextFrontier;
   }
 
-  await expand(rootNode, 0);
   const withPkgs = opts.withPackages !== false;
   if (withPkgs) await attachPackages(rootNode);
   return rootNode;
 }
 
+async function expandBinaryPlacement(node, depth, maxDepth) {
+  if (depth >= maxDepth) return;
+  const ids = [node.leftChild, node.rightChild].filter(Boolean);
+  if (ids.length === 0) return;
+  const children = await User.find({ _id: { $in: ids } }).select(FIELDS_FOR_TREE).lean();
+  const byId = new Map(children.map((child) => [String(child._id), child]));
+  for (const id of ids) {
+    const child = byId.get(String(id));
+    if (!child) continue;
+    const childNode = shapeTreeNode(child, depth + 1);
+    node.children.push(childNode);
+    await expandBinaryPlacement(childNode, depth + 1, maxDepth);
+  }
+}
+
 /**
  * Binary placement tree for `/api/user/binary-tree` and admin tools.
+ * Children = leftChild/rightChild pointers (not sponsor referrals).
  * @param {string|import('mongoose').Types.ObjectId} userId
  * @param {number | null} maxDepth omit or `"all"` style handled by controller
  * @param {{ rootOverride?: string, withPackages?: boolean }} [opts]
@@ -138,7 +164,16 @@ export async function getReferralTree(userId, maxDepth = 6, opts = {}) {
 export async function getBinaryTree(userId, maxDepth = null, opts = {}) {
   const cap = maxDepth == null || !Number.isFinite(maxDepth) || maxDepth < 1 ? 12 : Math.min(50, Math.floor(maxDepth));
   const target = opts.rootOverrideId ?? userId;
-  return getReferralTree(target, cap, opts);
+  if (!mongoose.isValidObjectId(target)) return null;
+
+  const root = await User.findById(target).select(FIELDS_FOR_TREE).lean();
+  if (!root) return null;
+
+  const rootNode = shapeTreeNode(root, 0);
+  await expandBinaryPlacement(rootNode, 0, cap);
+  const withPkgs = opts.withPackages !== false;
+  if (withPkgs) await attachPackages(rootNode);
+  return rootNode;
 }
 
 /**

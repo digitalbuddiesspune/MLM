@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminUserReferralTree, getReferralTree } from '../../../api/admin.js';
 
@@ -42,6 +42,7 @@ function buildUsersByLevel(rootNode) {
 
 export default function AdminMyHierarchy() {
   const { rootUserId } = useParams();
+  const navigate = useNavigate();
   /** Levels with expanded user table; empty ⇒ all collapsed on first load */
   const [expandedLevels, setExpandedLevels] = useState(() => new Set());
 
@@ -76,15 +77,20 @@ export default function AdminMyHierarchy() {
       <h1 className="text-2xl font-bold text-slate-900">My Hierarchy</h1>
       <p className="mt-1 text-slate-600">
         {viewingOther
-          ? 'Referral downline for the selected user, grouped level-wise (Level 1 = their direct referrals).'
-          : 'Users joined via your referral ID, grouped level-wise.'}
+          ? 'Sponsor referral chain for the selected member. Level 1 = users who joined with their referral ID; each next level = users who joined with the previous level’s referral IDs.'
+          : 'Sponsor referral chain under you. Level 1 = users who joined with your referral ID; Level 2 = users who joined with Level 1 members’ referral IDs, and so on.'}
       </p>
       {viewingOther && (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
           {!isLoading && (
             <span className="text-slate-700">
               Root member:{' '}
-              <span className="font-semibold text-slate-900">{rootName ?? '—'}</span>
+              <Link
+                to={`/admin/users/${rootUserId}`}
+                className="font-semibold text-indigo-700 hover:text-indigo-900 hover:underline"
+              >
+                {rootName ?? '—'}
+              </Link>
             </span>
           )}
           <Link
@@ -145,9 +151,21 @@ export default function AdminMyHierarchy() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {users.map((u) => (
-                            <tr key={u.id}>
-                              <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                                <span className="block truncate">{u.name ?? '—'}</span>
+                            <tr
+                              key={u.id}
+                              onClick={() => navigate(`/admin/users/${u.id}`)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  navigate(`/admin/users/${u.id}`);
+                                }
+                              }}
+                              tabIndex={0}
+                              role="link"
+                              className="cursor-pointer hover:bg-indigo-50/60 focus:bg-indigo-50/60 focus:outline-none"
+                            >
+                              <td className="px-4 py-3 text-sm font-medium text-indigo-700">
+                                <span className="block truncate hover:underline">{u.name ?? '—'}</span>
                               </td>
                               <td className="px-4 py-3 text-sm text-slate-600">
                                 <span className="block truncate">{u.email ?? '—'}</span>
