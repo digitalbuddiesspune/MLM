@@ -6,7 +6,7 @@ import { nextReferralNumber, ensureReferralNumber, FIRST_REFERRAL_NUMBER } from 
 
 const SALT_ROUNDS = 10;
 
-async function resolveSponsorMongoId(sponsorInput, session) {
+export async function resolveSponsorMongoId(sponsorInput, session = null) {
   const s = String(sponsorInput ?? '').trim();
   if (!s) {
     const err = new Error('Sponsor ID is required');
@@ -37,6 +37,30 @@ async function resolveSponsorMongoId(sponsorInput, session) {
   }
 
   return String(sponsor._id);
+}
+
+/**
+ * True when assigning `newSponsorMongoId` as sponsor of `userId` would create a cycle.
+ */
+export async function wouldCreateSponsorCycle(userId, newSponsorMongoId) {
+  if (!userId || !newSponsorMongoId) return false;
+  if (String(userId) === String(newSponsorMongoId)) return true;
+
+  let current = newSponsorMongoId;
+  const visited = new Set();
+
+  while (current) {
+    if (String(current) === String(userId)) return true;
+    const key = String(current);
+    if (visited.has(key)) break;
+    visited.add(key);
+
+    const doc = await User.findById(current).select('sponsorId').lean();
+    if (!doc?.sponsorId) break;
+    current = doc.sponsorId;
+  }
+
+  return false;
 }
 
 /**

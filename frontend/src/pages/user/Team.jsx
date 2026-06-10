@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyTeam, updateUser, deleteUser } from '../../api/admin.js';
+import { getMyTeam, updateUser } from '../../api/admin.js';
 import { getStoredUser } from '../../api/auth.js';
 
 const TEAM_QUERY_KEY = ['team'];
@@ -16,8 +16,6 @@ export default function Team() {
   const [editUser, setEditUser] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', role: 'user', isActive: true, panNumber: '', bankAccountNumber: '', upiId: '' });
   const [editError, setEditError] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-
   const currentUser = getStoredUser();
   const isAdmin = currentUser?.role === 'admin';
 
@@ -37,14 +35,6 @@ export default function Team() {
     },
     onError: (err) => {
       setEditError(err.response?.data?.error ?? 'Failed to update user');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TEAM_QUERY_KEY });
-      setDeleteConfirm(null);
     },
   });
 
@@ -85,15 +75,6 @@ export default function Team() {
     });
   };
 
-  const handleDeleteClick = (u) => {
-    setDeleteConfirm(u);
-  };
-
-  const handleDeleteConfirm = () => {
-    if (!deleteConfirm?._id) return;
-    deleteMutation.mutate(deleteConfirm._id);
-  };
-
   if (loading) {
     return (
       <div>
@@ -130,7 +111,7 @@ export default function Team() {
       </h1>
       <p className="mt-1 text-slate-600">
         {isAdmin
-          ? 'Manage your downline. View details, edit or remove team members.'
+          ? 'Manage your downline. View details and edit team members.'
           : 'Your referrals and downline (users who registered with your Referral ID).'}
       </p>
       <div className="mt-8 rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
@@ -188,22 +169,13 @@ export default function Team() {
                   </td>
                   {isAdmin && (
                     <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(u)}
-                          className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteClick(u)}
-                          className="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(u)}
+                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Edit
+                      </button>
                     </td>
                   )}
                 </tr>
@@ -324,37 +296,6 @@ export default function Team() {
         </div>
       )}
 
-      {/* Delete confirmation modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" aria-modal="true">
-          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-900">Delete user?</h2>
-            {deleteMutation.error && (
-              <p className="mt-2 text-sm text-red-600">{deleteMutation.error.response?.data?.error ?? 'Failed to delete user'}</p>
-            )}
-            <p className="mt-2 text-sm text-slate-600">
-              This will permanently remove <strong>{deleteConfirm.name}</strong> ({deleteConfirm.email}). This action cannot be undone.
-            </p>
-            <div className="mt-6 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                disabled={deleteMutation.isLoading}
-                className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleteMutation.isLoading ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

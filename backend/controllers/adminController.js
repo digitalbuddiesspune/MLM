@@ -11,6 +11,7 @@ import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import { syncUserLevel } from '../services/levelService.js';
 import { getReferralTree as buildReferralTreeForUser } from '../services/treeService.js';
 import { refreshBinaryState } from '../services/placementService.js';
+import { resolveSponsorMongoId, wouldCreateSponsorCycle } from '../services/userService.js';
 
 function escapeRegexLiteral(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -538,23 +539,26 @@ export async function reviewWithdrawalRequest(req, res, next) {
 
 /**
  * PATCH /api/admin/users/:id
- * Update user details (name, email, mobile, role, isActive). Admin only.
+ * Update user details (name, email, mobile, role, isActive, sponsorReferralCode). Admin only.
  */
 export async function updateUser(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, email, mobile, role, isActive } = req.body;
+    const { name, email, mobile, role, isActive, sponsorReferralCode } = req.body;
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ success: false, error: 'Invalid user id' });
     }
 
-    const user = await User.findById(id).select('name email mobile role isActive').lean();
+    const user = await User.findById(id).select('name email mobile role isActive sponsorId').lean();
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     const updates = {};
+    let previousSponsorId = user.sponsorId ? String(user.sponsorId) : null;
+    let newSponsorId = previousSponsorId;
+
     if (typeof name === 'string' && name.trim()) updates.name = name.trim();
     if (typeof mobile === 'string' && mobile.trim()) updates.mobile = mobile.trim();
     if (typeof email === 'string' && email.trim()) {
@@ -570,13 +574,50 @@ export async function updateUser(req, res, next) {
     if (role === 'user' || role === 'admin') updates.role = role;
     if (typeof isActive === 'boolean') updates.isActive = isActive;
 
+    if (sponsorReferralCode !== undefined) {
+      const raw = sponsorReferralCode == null ? '' : String(sponsorReferralCode).trim();
+
+      if (raw === '') {
+        updates.sponsorId = null;
+        updates.directSponsor = null;
+        newSponsorId = null;
+      } else {
+        let resolvedSponsorId;
+        try {
+          resolvedSponsorId = await resolveSponsorMongoId(raw);
+        } catch (err) {
+          return res.status(err.statusCode ?? 400).json({
+            success: false,
+            error: err.message ?? 'Invalid sponsor referral code',
+          });
+        }
+
+        if (await wouldCreateSponsorCycle(id, resolvedSponsorId)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Cannot assign sponsor: would create a circular referral chain',
+          });
+        }
+
+        updates.sponsorId = resolvedSponsorId;
+        updates.directSponsor = resolvedSponsorId;
+        newSponsorId = resolvedSponsorId;
+      }
+    }
+
     const updated = await User.findByIdAndUpdate(
       id,
       { $set: updates },
       { new: true, runValidators: true }
     )
       .select('-password')
+      .populate('sponsorId', 'name email mobile referralNumber')
       .lean();
+
+    if (sponsorReferralCode !== undefined && previousSponsorId !== newSponsorId) {
+      const syncIds = [previousSponsorId, newSponsorId].filter(Boolean);
+      await Promise.all(syncIds.map((sid) => syncUserLevel(sid)));
+    }
 
     res.json({ success: true, data: { user: updated } });
   } catch (error) {

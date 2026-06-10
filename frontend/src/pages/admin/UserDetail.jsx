@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getAdminUserDetail } from '../../api/admin.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getAdminUserDetail, updateUser } from '../../api/admin.js';
 import { formatBinaryMatchingDetail } from '../../utils/ledgerDisplay.js';
 
 function Field({ label, value, className = '' }) {
@@ -50,8 +51,20 @@ function relatedUserLink(rel) {
   return '—';
 }
 
+function sponsorReferralDisplay(sponsor) {
+  if (!sponsor) return '';
+  if (typeof sponsor === 'object' && sponsor.referralNumber != null) {
+    return String(sponsor.referralNumber);
+  }
+  return '';
+}
+
 export default function AdminUserDetail() {
   const { id } = useParams();
+  const queryClient = useQueryClient();
+  const [sponsorReferralCode, setSponsorReferralCode] = useState('');
+  const [sponsorMessage, setSponsorMessage] = useState('');
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin', 'user-detail', id],
     queryFn: () => getAdminUserDetail(id),
@@ -61,6 +74,23 @@ export default function AdminUserDetail() {
   const message = error ? (error.response?.data?.error ?? 'Failed to load user') : '';
   const payload = data?.data;
   const user = payload?.user;
+
+  useEffect(() => {
+    setSponsorReferralCode(sponsorReferralDisplay(user?.sponsorId));
+    setSponsorMessage('');
+  }, [user?.sponsorId, id]);
+
+  const sponsorMutation = useMutation({
+    mutationFn: (code) => updateUser(id, { sponsorReferralCode: code }),
+    onSuccess: async () => {
+      setSponsorMessage('Sponsor referral ID updated.');
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'user-detail', id] });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+    onError: (e) => {
+      setSponsorMessage(e?.response?.data?.error ?? 'Failed to update sponsor');
+    },
+  });
   const wallet = payload?.wallet;
   const kyc = payload?.kyc;
   const addresses = payload?.addresses ?? [];
@@ -124,6 +154,58 @@ export default function AdminUserDetail() {
             </Card>
 
             <Card title="Binary placement">
+              <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Sponsor referral ID</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Registration sponsor (numeric referral code used when this user joined). Changing this updates the sponsor chain only — binary placement is unchanged.
+                </p>
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <div className="min-w-[10rem] flex-1">
+                    <label htmlFor="sponsor-referral-code" className="sr-only">Sponsor referral ID</label>
+                    <input
+                      id="sponsor-referral-code"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={sponsorReferralCode}
+                      onChange={(e) => setSponsorReferralCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="e.g. 100001"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={sponsorMutation.isPending}
+                    onClick={() => sponsorMutation.mutate(sponsorReferralCode)}
+                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {sponsorMutation.isPending ? 'Saving…' : 'Save sponsor'}
+                  </button>
+                  {user.sponsorId && (
+                    <button
+                      type="button"
+                      disabled={sponsorMutation.isPending}
+                      onClick={() => {
+                        setSponsorReferralCode('');
+                        sponsorMutation.mutate('');
+                      }}
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {user.sponsorId && (
+                  <p className="mt-2 text-xs text-slate-600">
+                    Current sponsor: {relatedUserLink(user.sponsorId)}
+                  </p>
+                )}
+                {sponsorMessage && (
+                  <p className={`mt-2 text-xs ${sponsorMessage.includes('updated') ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {sponsorMessage}
+                  </p>
+                )}
+              </div>
               <dl className="grid gap-4 sm:grid-cols-2">
                 <Field label="Side under sponsor" value={user.placementSide ?? '—'} />
                 <Field label="Placement sequence" value={String(user.placementSequence ?? user.placementIndex ?? 0)} />
