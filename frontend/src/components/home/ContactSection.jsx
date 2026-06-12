@@ -35,7 +35,7 @@ export default function ContactSection() {
   const socialLinks = [
     { name: 'Instagram', href: 'https://instagram.com/amrutawellness' },
     { name: 'Facebook', href: 'https://facebook.com/amrutawellness' },
-    { name: 'WhatsApp', href: 'https://wa.me/919876543210' },
+    { name: 'WhatsApp', href: 'https://wa.me/919967589225' },
   ];
 
   const handleSubmit = (e) => {
@@ -72,8 +72,8 @@ export default function ContactSection() {
               </div>
               <div>
                 <p className="font-semibold text-slate-800">Phone Number</p>
-                <a href="tel:+919876543210" className="text-slate-600 hover:text-teal-700 hover:underline">
-                  +91 98765 43210
+                <a href="tel:+919967589225" className="text-slate-600 hover:text-teal-700 hover:underline">
+                  +91 99675 89225
                 </a>
               </div>
               <div>

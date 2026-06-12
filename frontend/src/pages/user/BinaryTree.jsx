@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStoredUser } from '../../api/auth.js';
 import {
@@ -157,9 +157,15 @@ export default function BinaryTree() {
   const isAdminView = location.pathname.startsWith('/admin');
   const stored = getStoredUser();
   const currentUserId = stored?._id ?? null;
-  const userPlaceUserId = !isAdminView ? (searchParams.get('placeUserId') ?? '') : '';
   const [adminPlaceUserId, setAdminPlaceUserId] = useState('');
+  const [userPlaceUserId, setUserPlaceUserId] = useState(() => searchParams.get('placeUserId') ?? '');
   const placeUserId = isAdminView ? adminPlaceUserId : userPlaceUserId;
+
+  useEffect(() => {
+    if (isAdminView) return;
+    const fromUrl = searchParams.get('placeUserId') ?? '';
+    if (fromUrl) setUserPlaceUserId(fromUrl);
+  }, [isAdminView, searchParams]);
   const [placeMessage, setPlaceMessage] = useState('');
 
   const [subtreeAnchor, setSubtreeAnchor] = useState(null);
@@ -193,7 +199,7 @@ export default function BinaryTree() {
   const teamQuery = useQuery({
     queryKey: ['user-dashboard', 'team'],
     queryFn: getMyTeam,
-    enabled: Boolean(placeUserId) && !isAdminView,
+    enabled: Boolean(currentUserId) && !isAdminView,
   });
 
   const unplacedQuery = useQuery({
@@ -201,6 +207,13 @@ export default function BinaryTree() {
     queryFn: getUnplacedUsers,
     enabled: isAdminView,
   });
+
+  const unplacedUsers = useMemo(() => {
+    if (isAdminView) return unplacedQuery.data?.data?.users ?? [];
+    return (teamQuery.data?.data?.users ?? []).filter((u) => !u.parentId);
+  }, [isAdminView, unplacedQuery.data, teamQuery.data]);
+
+  const unplacedLoading = isAdminView ? unplacedQuery.isLoading : teamQuery.isLoading;
 
   const openSlotsQuery = useQuery({
     queryKey: ['tree-open-slots', currentUserId, isAdminView],
@@ -211,14 +224,10 @@ export default function BinaryTree() {
     enabled: Boolean(placeUserId) && Boolean(currentUserId),
   });
 
-  const unplacedUsers = unplacedQuery.data?.data?.users ?? [];
-
-  const placeMember = useMemo(() => {
-    if (isAdminView) {
-      return unplacedUsers.find((u) => String(u._id) === String(placeUserId));
-    }
-    return (teamQuery.data?.data?.users ?? []).find((u) => String(u._id) === String(placeUserId));
-  }, [isAdminView, unplacedUsers, teamQuery.data, placeUserId]);
+  const placeMember = useMemo(
+    () => unplacedUsers.find((u) => String(u._id) === String(placeUserId)),
+    [unplacedUsers, placeUserId]
+  );
 
   const openSlotKeys = useMemo(() => {
     const keys = new Set();
@@ -250,6 +259,7 @@ export default function BinaryTree() {
       if (isAdminView) {
         setAdminPlaceUserId('');
       } else {
+        setUserPlaceUserId('');
         navigate('/user/binary-tree', { replace: true });
       }
     },
@@ -401,96 +411,89 @@ export default function BinaryTree() {
       </section>
       )}
 
-      {isAdminView && (
-        <section className="rounded-xl border border-indigo-200 bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900">Place new members</h2>
-          <p className="mt-1 text-xs text-slate-600">
-            Select an unplaced user, then click an open <span className="font-medium">+ Place left/right</span> slot on the tree below.
+      <section className="rounded-xl border border-indigo-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">Place new members</h2>
+        <p className="mt-1 text-xs text-slate-600">
+          {isAdminView
+            ? 'Select an unplaced user, then click an open + Place left/right slot on the tree below.'
+            : 'Select a referred user who is not yet in the tree, then click an open + Place left/right slot anywhere in your binary tree.'}
+        </p>
+
+        {placeMessage ? (
+          <p className={`mt-3 rounded-md px-3 py-2 text-xs ${placeMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {placeMessage}
           </p>
+        ) : null}
 
-          {placeMessage ? (
-            <p className={`mt-3 rounded-md px-3 py-2 text-xs ${placeMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-              {placeMessage}
-            </p>
-          ) : null}
-
-          {unplacedQuery.isLoading ? (
-            <p className="mt-3 text-sm text-slate-500">Loading unplaced users…</p>
-          ) : unplacedUsers.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">No unplaced users. Everyone is already in the tree.</p>
-          ) : (
-            <div className="mt-3 flex flex-wrap items-end gap-3">
-              <label className="min-w-[260px] flex-1 text-xs font-medium text-slate-600">
-                Member to place
-                <select
-                  value={adminPlaceUserId}
-                  onChange={(e) => {
-                    setAdminPlaceUserId(e.target.value);
-                    setPlaceMessage('');
-                  }}
-                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
-                >
-                  <option value="">Select user…</option>
-                  {unplacedUsers.map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.name} (ID {u.referralNumber ?? '—'})
-                      {u.sponsor?.name ? ` — sponsor: ${u.sponsor.name}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {adminPlaceUserId && (
-                <button
-                  type="button"
-                  onClick={() => {
+        {unplacedLoading ? (
+          <p className="mt-3 text-sm text-slate-500">Loading unplaced users…</p>
+        ) : unplacedUsers.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">
+            {isAdminView
+              ? 'No unplaced users. Everyone is already in the tree.'
+              : 'No pending referrals to place. New members appear here after they register with your referral ID.'}
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="min-w-[260px] flex-1 text-xs font-medium text-slate-600">
+              Member to place
+              <select
+                value={placeUserId}
+                onChange={(e) => {
+                  const nextId = e.target.value;
+                  if (isAdminView) {
+                    setAdminPlaceUserId(nextId);
+                  } else {
+                    setUserPlaceUserId(nextId);
+                    if (nextId) {
+                      navigate(`/user/binary-tree?placeUserId=${encodeURIComponent(nextId)}`, { replace: true });
+                    } else {
+                      navigate('/user/binary-tree', { replace: true });
+                    }
+                  }
+                  setPlaceMessage('');
+                }}
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+              >
+                <option value="">Select user…</option>
+                {unplacedUsers.map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name} (ID {u.referralNumber ?? '—'})
+                    {isAdminView && u.sponsor?.name ? ` — sponsor: ${u.sponsor.name}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {placeUserId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAdminView) {
                     setAdminPlaceUserId('');
-                    setPlaceMessage('');
-                  }}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          )}
-
-          {placeUserId && placeMember ? (
-            <p className="mt-3 rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
-              Placing <span className="font-semibold">{placeMember.name}</span>
-              {placeMember.sponsor?.name ? (
-                <> (registered under <span className="font-semibold">{placeMember.sponsor.name}</span>)</>
-              ) : null}
-              {' '}— pick a slot on the tree.
-            </p>
-          ) : null}
-        </section>
-      )}
-
-      {placeUserId && !isAdminView && (
-        <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-indigo-900">Choose placement slot</p>
-              <p className="mt-1 text-xs text-indigo-800">
-                Placing{' '}
-                <span className="font-medium">{placeMember?.name ?? 'member'}</span>
-                {' '}— click an open <span className="font-medium">+ Place left/right</span> slot on the tree below.
-              </p>
-              {placeMessage ? (
-                <p className={`mt-2 text-xs ${placeMessage.includes('successfully') ? 'text-green-700' : 'text-red-700'}`}>
-                  {placeMessage}
-                </p>
-              ) : null}
-            </div>
-            <Link
-              to="/user/dashboard"
-              className="text-xs font-medium text-indigo-700 hover:text-indigo-900"
-            >
-              ← Back to dashboard
-            </Link>
+                  } else {
+                    setUserPlaceUserId('');
+                    navigate('/user/binary-tree', { replace: true });
+                  }
+                  setPlaceMessage('');
+                }}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            ) : null}
           </div>
-        </section>
-      )}
+        )}
+
+        {placeUserId && placeMember ? (
+          <p className="mt-3 rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+            Placing <span className="font-semibold">{placeMember.name}</span>
+            {isAdminView && placeMember.sponsor?.name ? (
+              <> (registered under <span className="font-semibold">{placeMember.sponsor.name}</span>)</>
+            ) : null}
+            {' '}— pick a slot on the tree below.
+          </p>
+        ) : null}
+      </section>
 
       {/* Flow */}
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -559,7 +562,7 @@ export default function BinaryTree() {
                   collapsedLevels={collapsedLevels}
                   collapsedNodeIds={collapsedNodeIds}
                   onToggleNodeCollapse={toggleNodeCollapse}
-                  placementMode={Boolean(placeUserId) && (isAdminView ? Boolean(placeMember) : true)}
+                  placementMode={Boolean(placeUserId) && Boolean(placeMember)}
                   openSlotKeys={openSlotKeys}
                   placing={placeMutation.isPending}
                   onPlaceSlot={(parentId, side) => {

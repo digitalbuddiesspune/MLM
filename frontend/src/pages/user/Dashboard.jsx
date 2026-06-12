@@ -26,7 +26,8 @@ function slotKey(parentId, side) {
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
-  const [slotByUserId, setSlotByUserId] = useState({});
+  const [selectedPlaceUserId, setSelectedPlaceUserId] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState('');
   const [placeMessage, setPlaceMessage] = useState('');
   const user = getStoredUser();
 
@@ -119,6 +120,8 @@ export default function Dashboard() {
       }),
     onSuccess: () => {
       setPlaceMessage('User placed in binary tree successfully.');
+      setSelectedPlaceUserId('');
+      setSelectedSlot('');
       queryClient.invalidateQueries({ queryKey: ['user-dashboard', 'team'] });
       queryClient.invalidateQueries({ queryKey: ['tree-open-slots'] });
       queryClient.invalidateQueries({ queryKey: ['binary-tree-flow'] });
@@ -147,15 +150,23 @@ export default function Dashboard() {
     }
   };
 
-  const handlePlace = (member) => {
-    const selected = slotByUserId[member._id];
-    if (!selected) {
+  const selectedMember = useMemo(
+    () => unplacedReferrals.find((u) => String(u._id) === String(selectedPlaceUserId)),
+    [unplacedReferrals, selectedPlaceUserId]
+  );
+
+  const handlePlace = () => {
+    if (!selectedPlaceUserId) {
+      setPlaceMessage('Select a user to place first.');
+      return;
+    }
+    if (!selectedSlot) {
       setPlaceMessage('Choose an open slot in your binary tree first.');
       return;
     }
-    const [parentId, side] = selected.split(':');
+    const [parentId, side] = selectedSlot.split(':');
     setPlaceMessage('');
-    placeMutation.mutate({ userId: member._id, parentId, side });
+    placeMutation.mutate({ userId: selectedPlaceUserId, parentId, side });
   };
 
   return (
@@ -298,61 +309,79 @@ export default function Dashboard() {
 
         {unplacedReferrals.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">No pending referred users to place.</p>
-        ) : slotsLoading ? (
-          <p className="mt-3 text-sm text-slate-500">Loading open slots…</p>
-        ) : openSlots.length === 0 ? (
-          <p className="mt-3 text-sm text-amber-700">No open slots in your binary tree yet.</p>
         ) : (
-          <div className="mt-3 space-y-3">
-            {unplacedReferrals.map((member) => (
-              <div
-                key={member._id}
-                className="rounded-lg border border-slate-200 px-3 py-3"
+          <div className="mt-3 space-y-4">
+            <label className="block text-xs font-medium text-slate-600">
+              Select user to place
+              <select
+                value={selectedPlaceUserId}
+                onChange={(e) => {
+                  setSelectedPlaceUserId(e.target.value);
+                  setSelectedSlot('');
+                  setPlaceMessage('');
+                }}
+                className="mt-1 block w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900"
               >
+                <option value="">Choose a referred member…</option>
+                {unplacedReferrals.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {member.name} (ID {member.referralNumber ?? '—'})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedPlaceUserId && selectedMember ? (
+              <div className="rounded-lg border border-slate-200 px-3 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{member.name}</p>
-                    <p className="text-xs text-slate-500">{member.email}</p>
+                    <p className="text-sm font-medium text-slate-900">{selectedMember.name}</p>
+                    <p className="text-xs text-slate-500">{selectedMember.email}</p>
                   </div>
                   <Link
-                    to={`/user/binary-tree?placeUserId=${encodeURIComponent(member._id)}`}
+                    to={`/user/binary-tree?placeUserId=${encodeURIComponent(selectedMember._id)}`}
                     className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
                   >
                     Pick on tree →
                   </Link>
                 </div>
-                <div className="mt-3 flex flex-wrap items-end gap-2">
-                  <label className="min-w-[220px] flex-1 text-xs font-medium text-slate-600">
-                    Open slot
-                    <select
-                      value={slotByUserId[member._id] ?? ''}
-                      onChange={(e) => {
-                        setSlotByUserId((prev) => ({ ...prev, [member._id]: e.target.value }));
-                      }}
-                      className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+
+                {slotsLoading ? (
+                  <p className="mt-3 text-sm text-slate-500">Loading open slots…</p>
+                ) : openSlots.length === 0 ? (
+                  <p className="mt-3 text-sm text-amber-700">No open slots in your binary tree yet.</p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <label className="min-w-[220px] flex-1 text-xs font-medium text-slate-600">
+                      Open slot
+                      <select
+                        value={selectedSlot}
+                        onChange={(e) => setSelectedSlot(e.target.value)}
+                        className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+                      >
+                        <option value="">Select end node…</option>
+                        {openSlots.map((slot) => (
+                          <option
+                            key={slotKey(slot.parentId, slot.side)}
+                            value={slotKey(slot.parentId, slot.side)}
+                          >
+                            {slot.parentName} (ID {slot.parentReferralNumber ?? '—'}) — {slot.side.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handlePlace}
+                      disabled={placeMutation.isPending || !selectedSlot}
+                      className="rounded-md bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                     >
-                      <option value="">Select end node…</option>
-                      {openSlots.map((slot) => (
-                        <option
-                          key={slotKey(slot.parentId, slot.side)}
-                          value={slotKey(slot.parentId, slot.side)}
-                        >
-                          {slot.parentName} (ID {slot.parentReferralNumber ?? '—'}) — {slot.side.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handlePlace(member)}
-                    disabled={placeMutation.isPending || !slotByUserId[member._id]}
-                    className="rounded-md bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                  >
-                    Place here
-                  </button>
-                </div>
+                      Place here
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
+            ) : null}
           </div>
         )}
       </div>

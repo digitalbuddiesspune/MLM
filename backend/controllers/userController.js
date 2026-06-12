@@ -78,6 +78,65 @@ export async function getMyTeam(req, res, next) {
 }
 
 /**
+ * PATCH /api/user/team/:id
+ * Sponsor may update their direct referral (sponsorId = logged-in user).
+ * Allowed fields: name, email, mobile.
+ */
+export async function updateTeamMember(req, res, next) {
+  try {
+    const sponsorUserId = req.userId;
+    const { id } = req.params;
+    const { name, email, mobile } = req.body ?? {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid user id' });
+    }
+
+    const member = await User.findById(id).select('sponsorId name email mobile').lean();
+    if (!member) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    if (!member.sponsorId || String(member.sponsorId) !== String(sponsorUserId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only edit users who joined with your referral ID',
+      });
+    }
+
+    const updates = {};
+    if (typeof name === 'string' && name.trim()) updates.name = name.trim();
+    if (typeof mobile === 'string' && mobile.trim()) updates.mobile = mobile.trim();
+    if (typeof email === 'string' && email.trim()) {
+      const normalized = email.trim().toLowerCase();
+      if (normalized !== member.email) {
+        const existing = await User.findOne({ email: normalized }).select('_id').lean();
+        if (existing && String(existing._id) !== String(id)) {
+          return res.status(400).json({ success: false, error: 'Email already in use' });
+        }
+        updates.email = normalized;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid fields to update' });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    )
+      .select('-password')
+      .lean();
+
+    res.json({ success: true, data: { user: updated } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * GET /api/user/profile
  * Returns logged-in user's profile details.
  */

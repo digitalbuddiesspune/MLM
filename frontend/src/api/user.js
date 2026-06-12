@@ -55,6 +55,11 @@ export async function getMyTeam(params = {}) {
   return data;
 }
 
+export async function updateTeamMember(id, payload) {
+  const { data } = await api.patch(`/user/team/${id}`, payload);
+  return data;
+}
+
 export async function getMyProfile() {
   const { data } = await api.get('/user/profile');
   return data;

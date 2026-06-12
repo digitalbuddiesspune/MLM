@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyTeam, updateUser } from '../../api/admin.js';
+import { getMyTeam as getAdminMyTeam, updateUser } from '../../api/admin.js';
+import { getMyTeam, updateTeamMember } from '../../api/user.js';
 import { getStoredUser } from '../../api/auth.js';
 
 const TEAM_QUERY_KEY = ['team'];
@@ -14,21 +15,31 @@ const TeamIcon = () => (
 export default function Team() {
   const queryClient = useQueryClient();
   const [editUser, setEditUser] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', role: 'user', isActive: true, panNumber: '', bankAccountNumber: '', upiId: '' });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    role: 'user',
+    isActive: true,
+    panNumber: '',
+    bankAccountNumber: '',
+    upiId: '',
+  });
   const [editError, setEditError] = useState('');
   const currentUser = getStoredUser();
   const isAdmin = currentUser?.role === 'admin';
 
-  const { data: teamData, isLoading: loading, error: teamError, refetch } = useQuery({
+  const { data: teamData, isLoading: loading, error: teamError } = useQuery({
     queryKey: TEAM_QUERY_KEY,
-    queryFn: getMyTeam,
+    queryFn: isAdmin ? getAdminMyTeam : getMyTeam,
     select: (res) => res?.data?.users ?? [],
   });
   const teamMembers = teamData ?? [];
   const error = teamError ? (teamError.response?.data?.error ?? 'Failed to load team') : '';
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }) => updateUser(id, payload),
+    mutationFn: ({ id, payload }) =>
+      isAdmin ? updateUser(id, payload) : updateTeamMember(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TEAM_QUERY_KEY });
       closeEdit();
@@ -43,6 +54,7 @@ export default function Team() {
     setEditForm({
       name: u.name ?? '',
       email: u.email ?? '',
+      mobile: u.mobile ?? '',
       role: u.role ?? 'user',
       isActive: u.isActive ?? false,
       panNumber: u.panNumber ?? '',
@@ -61,18 +73,22 @@ export default function Team() {
     e.preventDefault();
     if (!editUser?._id) return;
     setEditError('');
-    updateMutation.mutate({
-      id: editUser._id,
-      payload: {
-        name: editForm.name.trim(),
-        email: editForm.email.trim(),
-        role: editForm.role,
-        isActive: editForm.isActive,
-        panNumber: editForm.panNumber.trim(),
-        bankAccountNumber: editForm.bankAccountNumber.trim(),
-        upiId: editForm.upiId.trim(),
-      },
-    });
+    const payload = isAdmin
+      ? {
+          name: editForm.name.trim(),
+          email: editForm.email.trim(),
+          role: editForm.role,
+          isActive: editForm.isActive,
+          panNumber: editForm.panNumber.trim(),
+          bankAccountNumber: editForm.bankAccountNumber.trim(),
+          upiId: editForm.upiId.trim(),
+        }
+      : {
+          name: editForm.name.trim(),
+          email: editForm.email.trim(),
+          mobile: editForm.mobile.trim(),
+        };
+    updateMutation.mutate({ id: editUser._id, payload });
   };
 
   if (loading) {
@@ -112,7 +128,7 @@ export default function Team() {
       <p className="mt-1 text-slate-600">
         {isAdmin
           ? 'Manage your downline. View details and edit team members.'
-          : 'Your referrals and downline (users who registered with your Referral ID).'}
+          : 'Your direct referrals. You can edit name, email, and mobile for members who joined with your referral ID.'}
       </p>
       <div className="mt-8 rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
@@ -120,6 +136,9 @@ export default function Team() {
             <tr>
               <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Name</th>
               <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Email</th>
+              {!isAdmin && (
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Mobile</th>
+              )}
               {isAdmin && (
                 <>
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">PAN</th>
@@ -130,15 +149,13 @@ export default function Team() {
               <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Role</th>
               <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Status</th>
               <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Joined</th>
-              {isAdmin && (
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Actions</th>
-              )}
+              <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {teamMembers.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 9 : 5} className="px-4 py-12 text-center text-slate-500 text-sm">
+                <td colSpan={isAdmin ? 9 : 7} className="px-4 py-12 text-center text-slate-500 text-sm">
                   No team members yet. Share your Referral ID to invite others.
                 </td>
               </tr>
@@ -147,6 +164,9 @@ export default function Team() {
                 <tr key={u._id}>
                   <td className="px-4 py-3 text-center text-sm font-medium text-slate-900">{u.name}</td>
                   <td className="px-4 py-3 text-center text-sm text-slate-600">{u.email}</td>
+                  {!isAdmin && (
+                    <td className="px-4 py-3 text-center text-sm text-slate-600">{u.mobile || '—'}</td>
+                  )}
                   {isAdmin && (
                     <>
                       <td className="px-4 py-3 text-center text-sm text-slate-600">{u.panNumber || '—'}</td>
@@ -167,17 +187,15 @@ export default function Team() {
                   <td className="px-4 py-3 text-center text-sm text-slate-500">
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                   </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(u)}
-                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  )}
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(u)}
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -219,62 +237,79 @@ export default function Team() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {!isAdmin && (
                 <div>
-                  <label htmlFor="edit-pan" className="block text-sm font-medium text-slate-700">PAN number</label>
+                  <label htmlFor="edit-mobile" className="block text-sm font-medium text-slate-700">Mobile</label>
                   <input
-                    id="edit-pan"
+                    id="edit-mobile"
                     type="text"
-                    value={editForm.panNumber}
-                    onChange={(e) => setEditForm((f) => ({ ...f, panNumber: e.target.value }))}
+                    value={editForm.mobile}
+                    onChange={(e) => setEditForm((f) => ({ ...f, mobile: e.target.value }))}
+                    required
                     className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
-                <div>
-                  <label htmlFor="edit-bank" className="block text-sm font-medium text-slate-700">Bank account number</label>
-                  <input
-                    id="edit-bank"
-                    type="text"
-                    value={editForm.bankAccountNumber}
-                    onChange={(e) => setEditForm((f) => ({ ...f, bankAccountNumber: e.target.value }))}
-                    className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="edit-upi" className="block text-sm font-medium text-slate-700">UPI ID</label>
-                <input
-                  id="edit-upi"
-                  type="text"
-                  value={editForm.upiId}
-                  onChange={(e) => setEditForm((f) => ({ ...f, upiId: e.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="flex items-center gap-4">
-                <div>
-                  <label htmlFor="edit-role" className="block text-sm font-medium text-slate-700">Role</label>
-                  <select
-                    id="edit-role"
-                    value={editForm.role}
-                    onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
-                    className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    id="edit-active"
-                    type="checkbox"
-                    checked={editForm.isActive}
-                    onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.checked }))}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label htmlFor="edit-active" className="text-sm font-medium text-slate-700">Active</label>
-                </div>
-              </div>
+              )}
+              {isAdmin && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="edit-pan" className="block text-sm font-medium text-slate-700">PAN number</label>
+                      <input
+                        id="edit-pan"
+                        type="text"
+                        value={editForm.panNumber}
+                        onChange={(e) => setEditForm((f) => ({ ...f, panNumber: e.target.value }))}
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="edit-bank" className="block text-sm font-medium text-slate-700">Bank account number</label>
+                      <input
+                        id="edit-bank"
+                        type="text"
+                        value={editForm.bankAccountNumber}
+                        onChange={(e) => setEditForm((f) => ({ ...f, bankAccountNumber: e.target.value }))}
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="edit-upi" className="block text-sm font-medium text-slate-700">UPI ID</label>
+                    <input
+                      id="edit-upi"
+                      type="text"
+                      value={editForm.upiId}
+                      onChange={(e) => setEditForm((f) => ({ ...f, upiId: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <label htmlFor="edit-role" className="block text-sm font-medium text-slate-700">Role</label>
+                      <select
+                        id="edit-role"
+                        value={editForm.role}
+                        onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                        className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-6">
+                      <input
+                        id="edit-active"
+                        type="checkbox"
+                        checked={editForm.isActive}
+                        onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.checked }))}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="edit-active" className="text-sm font-medium text-slate-700">Active</label>
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"

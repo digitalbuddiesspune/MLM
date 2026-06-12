@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getMyTeam,
+  updateTeamMember,
   getMyProfile,
   changeMyPassword,
   getBinaryTree,
@@ -20,6 +21,7 @@ import { requireAuth } from '../middleware/auth.js';
 const router = Router();
 
 router.get('/team', requireAuth, getMyTeam);
+router.patch('/team/:id', requireAuth, updateTeamMember);
 router.get('/profile', requireAuth, getMyProfile);
 router.patch('/password', requireAuth, changeMyPassword);
 router.get('/binary-tree', requireAuth, getBinaryTree);
