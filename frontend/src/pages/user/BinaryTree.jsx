@@ -169,8 +169,9 @@ export default function BinaryTree() {
   const [placeMessage, setPlaceMessage] = useState('');
 
   const [subtreeAnchor, setSubtreeAnchor] = useState(null);
-  const [jumpRef, setJumpRef] = useState('');
-  const [jumpHint, setJumpHint] = useState('');
+  const [subtreeLabel, setSubtreeLabel] = useState('');
+  const [viewFromIdInput, setViewFromIdInput] = useState('');
+  const [viewFromIdHint, setViewFromIdHint] = useState('');
   const [jumpHighlightId, setJumpHighlightId] = useState(null);
   const [depth, setDepth] = useState(12);
   const [visibleLevels, setVisibleLevels] = useState(4);
@@ -272,27 +273,40 @@ export default function BinaryTree() {
     ? (treeQuery.error?.response?.data?.error ?? 'Failed to load binary data')
     : '';
 
-  const handleJump = async () => {
-    const trimmed = jumpRef.trim();
+  const handleViewFromReferralId = async () => {
+    const trimmed = viewFromIdInput.trim();
     if (!/^\d+$/.test(trimmed)) {
-      setJumpHint('Enter numeric referral ID only.');
+      setViewFromIdHint('Enter numeric referral ID only.');
       return;
     }
-    setJumpHint('');
+    setViewFromIdHint('');
     try {
       const res = await findBinaryTeamMember(Number(trimmed));
       const hitId = res?.data?.id;
       if (!hitId) return;
-      setJumpHighlightId(String(hitId));
+      const label = res?.data?.name
+        ? `${res.data.name} (ID ${trimmed})`
+        : `ID ${trimmed}`;
+      setSubtreeAnchor(String(hitId));
+      setSubtreeLabel(label);
+      setJumpHighlightId(null);
+      setCollapsedLevels(new Set());
+      setCollapsedNodeIds(new Set());
     } catch (e) {
-      setJumpHint(e?.response?.data?.error ?? 'Member not in your subtree');
+      setViewFromIdHint(e?.response?.data?.error ?? 'Member not found in your tree scope');
     }
   };
 
-  const resetView = () => {
+  const backToFullTree = () => {
     setSubtreeAnchor(null);
+    setSubtreeLabel('');
     setJumpHighlightId(null);
-    setJumpHint('');
+    setViewFromIdHint('');
+  };
+
+  const resetView = () => {
+    backToFullTree();
+    setViewFromIdInput('');
     setVisibleLevels(4);
     setCollapsedLevels(new Set());
     setCollapsedNodeIds(new Set());
@@ -323,22 +337,151 @@ export default function BinaryTree() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full space-y-5 px-4 py-6 sm:px-6">
+    <div className="min-h-screen w-full max-w-full space-y-5 pb-6">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           Binary Tree
         </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          {isAdminView
-            ? 'Centralized platform binary tree. The admin account is the root sponsor; every registered member is linked under this tree.'
-            : 'Simple sponsor hierarchy view. Example structure: A root with left/right branches (B/C), then D/E/F/G and so on.'}
-        </p>
+        {!isAdminView && (
+          <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
+            Simple sponsor hierarchy view. Example structure: A root with left/right branches (B/C), then D/E/F/G and so on.
+          </p>
+        )}
       </header>
 
-      {/* Toolbar — user view only */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <section className="h-full rounded-xl border border-indigo-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">Place new members</h2>
+          <p className="mt-1 text-[11px] text-slate-600">
+            Select an unplaced user, then click + Place left/right on the tree below.
+          </p>
+
+          {placeMessage ? (
+            <p className={`mt-2 rounded-md px-3 py-2 text-xs ${placeMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {placeMessage}
+            </p>
+          ) : null}
+
+          {unplacedLoading ? (
+            <p className="mt-3 text-sm text-slate-500">Loading unplaced users…</p>
+          ) : unplacedUsers.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-500">
+              {isAdminView
+                ? 'No unplaced users.'
+                : 'No pending referrals to place.'}
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="min-w-0 flex-1 text-xs font-medium text-slate-600">
+                Member to place
+                <select
+                  value={placeUserId}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    if (isAdminView) {
+                      setAdminPlaceUserId(nextId);
+                    } else {
+                      setUserPlaceUserId(nextId);
+                      if (nextId) {
+                        navigate(`/user/binary-tree?placeUserId=${encodeURIComponent(nextId)}`, { replace: true });
+                      } else {
+                        navigate('/user/binary-tree', { replace: true });
+                      }
+                    }
+                    setPlaceMessage('');
+                  }}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+                >
+                  <option value="">Select user…</option>
+                  {unplacedUsers.map((u) => (
+                    <option key={u._id} value={u._id}>
+                      {u.name} (ID {u.referralNumber ?? '—'})
+                      {isAdminView && u.sponsor?.name ? ` — ${u.sponsor.name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {placeUserId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isAdminView) {
+                      setAdminPlaceUserId('');
+                    } else {
+                      setUserPlaceUserId('');
+                      navigate('/user/binary-tree', { replace: true });
+                    }
+                    setPlaceMessage('');
+                  }}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          )}
+
+          {placeUserId && placeMember ? (
+            <p className="mt-2 rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+              Placing <span className="font-semibold">{placeMember.name}</span> — pick a slot below.
+            </p>
+          ) : null}
+        </section>
+
+        <section className="h-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">View tree from referral ID</h2>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Shows that member as the root. Parent nodes above them are hidden.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="min-w-0 flex-1 text-xs font-medium text-slate-600">
+              Referral ID
+              <input
+                value={viewFromIdInput}
+                onChange={(e) => setViewFromIdInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleViewFromReferralId();
+                }}
+                placeholder="e.g. 100101"
+                inputMode="numeric"
+                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 placeholder:text-slate-400"
+              />
+            </label>
+            <button
+              type="button"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              onClick={handleViewFromReferralId}
+            >
+              View
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              onClick={resetView}
+            >
+              Reset
+            </button>
+            {subtreeAnchor ? (
+              <button
+                type="button"
+                className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500"
+                onClick={backToFullTree}
+              >
+                {isAdminView ? 'Platform root' : 'My root'}
+              </button>
+            ) : null}
+          </div>
+          {viewFromIdHint ? <p className="mt-2 text-[11px] text-rose-600">{viewFromIdHint}</p> : null}
+          {subtreeAnchor && subtreeLabel ? (
+            <p className="mt-2 rounded-md bg-violet-50 px-3 py-2 text-xs text-violet-900">
+              Rooted at <span className="font-semibold">{subtreeLabel}</span>
+            </p>
+          ) : null}
+        </section>
+      </div>
+
       {!isAdminView && (
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-end gap-4">
+        <section className="flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <label className="flex flex-col text-xs font-medium text-slate-600">
             Fetch depth
             <select
@@ -363,137 +506,8 @@ export default function BinaryTree() {
               ))}
             </select>
           </label>
-
-          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="flex flex-1 flex-col text-xs font-medium text-slate-600">
-              Search by referral ID
-              <div className="mt-1 flex gap-2">
-                <input
-                  value={jumpRef}
-                  onChange={(e) => setJumpRef(e.target.value)}
-                  placeholder="e.g. 100101"
-                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 placeholder:text-slate-400"
-                />
-                <button
-                  type="button"
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                  onClick={handleJump}
-                >
-                  Jump
-                </button>
-              </div>
-              {jumpHint ? <p className="mt-1 text-[11px] text-rose-600">{jumpHint}</p> : null}
-            </label>
-          </div>
-
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => {
-              resetView();
-              setJumpRef('');
-            }}
-          >
-            Reset view
-          </button>
-          {subtreeAnchor && (
-            <button
-              type="button"
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-              onClick={() => {
-                setSubtreeAnchor(null);
-              }}
-            >
-              Back to my root
-            </button>
-          )}
-        </div>
-      </section>
+        </section>
       )}
-
-      <section className="rounded-xl border border-indigo-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900">Place new members</h2>
-        <p className="mt-1 text-xs text-slate-600">
-          {isAdminView
-            ? 'Select an unplaced user, then click an open + Place left/right slot on the tree below.'
-            : 'Select a referred user who is not yet in the tree, then click an open + Place left/right slot anywhere in your binary tree.'}
-        </p>
-
-        {placeMessage ? (
-          <p className={`mt-3 rounded-md px-3 py-2 text-xs ${placeMessage.includes('successfully') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            {placeMessage}
-          </p>
-        ) : null}
-
-        {unplacedLoading ? (
-          <p className="mt-3 text-sm text-slate-500">Loading unplaced users…</p>
-        ) : unplacedUsers.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">
-            {isAdminView
-              ? 'No unplaced users. Everyone is already in the tree.'
-              : 'No pending referrals to place. New members appear here after they register with your referral ID.'}
-          </p>
-        ) : (
-          <div className="mt-3 flex flex-wrap items-end gap-3">
-            <label className="min-w-[260px] flex-1 text-xs font-medium text-slate-600">
-              Member to place
-              <select
-                value={placeUserId}
-                onChange={(e) => {
-                  const nextId = e.target.value;
-                  if (isAdminView) {
-                    setAdminPlaceUserId(nextId);
-                  } else {
-                    setUserPlaceUserId(nextId);
-                    if (nextId) {
-                      navigate(`/user/binary-tree?placeUserId=${encodeURIComponent(nextId)}`, { replace: true });
-                    } else {
-                      navigate('/user/binary-tree', { replace: true });
-                    }
-                  }
-                  setPlaceMessage('');
-                }}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
-              >
-                <option value="">Select user…</option>
-                {unplacedUsers.map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.name} (ID {u.referralNumber ?? '—'})
-                    {isAdminView && u.sponsor?.name ? ` — sponsor: ${u.sponsor.name}` : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {placeUserId ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (isAdminView) {
-                    setAdminPlaceUserId('');
-                  } else {
-                    setUserPlaceUserId('');
-                    navigate('/user/binary-tree', { replace: true });
-                  }
-                  setPlaceMessage('');
-                }}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-            ) : null}
-          </div>
-        )}
-
-        {placeUserId && placeMember ? (
-          <p className="mt-3 rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
-            Placing <span className="font-semibold">{placeMember.name}</span>
-            {isAdminView && placeMember.sponsor?.name ? (
-              <> (registered under <span className="font-semibold">{placeMember.sponsor.name}</span>)</>
-            ) : null}
-            {' '}— pick a slot on the tree below.
-          </p>
-        ) : null}
-      </section>
 
       {/* Flow */}
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">

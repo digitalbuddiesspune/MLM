@@ -3,6 +3,18 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAdminUsers, updateUser } from '../../api/admin.js';
 
+function accountStatusBadge(isActive) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${
+        isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+      }`}
+    >
+      {isActive ? 'Released' : 'On hold'}
+    </span>
+  );
+}
+
 export default function AdminUsers() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -12,6 +24,15 @@ export default function AdminUsers() {
   const [searchInput, setSearchInput] = useState('');
   const [statusTarget, setStatusTarget] = useState(null);
   const [actionMessage, setActionMessage] = useState('');
+  const [editUser, setEditUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    mobile: '',
+    role: 'user',
+    isActive: true,
+  });
+  const [editError, setEditError] = useState('');
 
   const params = {
     page,
@@ -43,6 +64,51 @@ export default function AdminUsers() {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateUser(id, payload),
+    onSuccess: async () => {
+      setActionMessage('User updated successfully.');
+      closeEdit();
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+    onError: (e) => {
+      setEditError(e?.response?.data?.error ?? 'Failed to update user');
+    },
+  });
+
+  const openEdit = (user) => {
+    setEditUser(user);
+    setEditForm({
+      name: user.name ?? '',
+      email: user.email ?? '',
+      mobile: user.mobile ?? '',
+      role: user.role ?? 'user',
+      isActive: user.isActive ?? false,
+    });
+    setEditError('');
+  };
+
+  const closeEdit = () => {
+    setEditUser(null);
+    setEditError('');
+  };
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+    if (!editUser?._id) return;
+    setEditError('');
+    editMutation.mutate({
+      id: editUser._id,
+      payload: {
+        name: editForm.name.trim(),
+        email: editForm.email.trim(),
+        mobile: editForm.mobile.trim(),
+        role: editForm.role,
+        isActive: editForm.isActive,
+      },
+    });
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     setSearch(searchInput);
@@ -56,42 +122,53 @@ export default function AdminUsers() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Users</h1>
-      <p className="mt-1 text-slate-600">Manage registered users. Hold or release accounts without removing them from the binary tree.</p>
       {actionMessage && (
         <p className="mt-3 text-sm text-slate-600">{actionMessage}</p>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-4">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by name or email"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-          />
-          <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      <div className="mt-6 flex flex-wrap items-end gap-4">
+        <form onSubmit={handleSearch} className="flex items-end gap-2">
+          <label className="flex min-w-[14rem] flex-col gap-1">
+            <span className="text-xs font-medium text-slate-500">Search</span>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Name or email"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
             Search
           </button>
         </form>
-        <select
-          value={roleFilter}
-          onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500"
-        >
-          <option value="">All roles</option>
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500"
-        >
-          <option value="">All status</option>
-          <option value="true">Released</option>
-          <option value="false">On hold</option>
-        </select>
+        <label className="flex min-w-[9rem] flex-col gap-1">
+          <span className="text-xs font-medium text-slate-500">Role</span>
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="">All roles</option>
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <label className="flex min-w-[9rem] flex-col gap-1">
+          <span className="text-xs font-medium text-slate-500">Status</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="">All status</option>
+            <option value="true">Released</option>
+            <option value="false">On hold</option>
+          </select>
+        </label>
       </div>
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -136,10 +213,8 @@ export default function AdminUsers() {
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {u.isActive ? 'Released' : 'On hold'}
-                    </span>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {accountStatusBadge(u.isActive)}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -156,25 +231,34 @@ export default function AdminUsers() {
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    {u.role === 'admin' ? (
-                      <span className="text-xs text-slate-400">—</span>
-                    ) : u.isActive ? (
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => openStatusConfirm(u, false)}
-                        className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                        onClick={() => openEdit(u)}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       >
-                        Hold
+                        Edit
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => openStatusConfirm(u, true)}
-                        className="rounded-lg border border-green-200 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50"
-                      >
-                        Release
-                      </button>
-                    )}
+                      {u.role !== 'admin' && (
+                        u.isActive ? (
+                          <button
+                            type="button"
+                            onClick={() => openStatusConfirm(u, false)}
+                            className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                          >
+                            Hold
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openStatusConfirm(u, true)}
+                            className="rounded-lg border border-green-200 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50"
+                          >
+                            Release
+                          </button>
+                        )
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -207,6 +291,100 @@ export default function AdminUsers() {
           </div>
         )}
       </div>
+
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" aria-modal="true">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-slate-900">Edit user</h2>
+            <p className="mt-1 text-sm text-slate-500">{editUser.email}</p>
+            <form onSubmit={handleEditSubmit} className="mt-4 space-y-4">
+              {editError && (
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{editError}</div>
+              )}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="users-edit-name" className="block text-sm font-medium text-slate-700">Name</label>
+                  <input
+                    id="users-edit-name"
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                    required
+                    className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="users-edit-email" className="block text-sm font-medium text-slate-700">Email</label>
+                  <input
+                    id="users-edit-email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                    required
+                    className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="users-edit-mobile" className="block text-sm font-medium text-slate-700">Mobile</label>
+                <input
+                  id="users-edit-mobile"
+                  type="text"
+                  value={editForm.mobile}
+                  onChange={(e) => setEditForm((f) => ({ ...f, mobile: e.target.value }))}
+                  required
+                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="users-edit-role" className="block text-sm font-medium text-slate-700">Role</label>
+                  <select
+                    id="users-edit-role"
+                    value={editForm.role}
+                    onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="users-edit-status" className="block text-sm font-medium text-slate-700">Status</label>
+                  <select
+                    id="users-edit-status"
+                    value={editForm.isActive ? 'released' : 'hold'}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, isActive: e.target.value === 'released' }))
+                    }
+                    className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="released">Released</option>
+                    <option value="hold">On hold</option>
+                  </select>
+                  <p className="mt-1.5">{accountStatusBadge(editForm.isActive)}</p>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeEdit}
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editMutation.isPending}
+                  className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {editMutation.isPending ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {statusTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">

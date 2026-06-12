@@ -112,8 +112,12 @@ export default function AdminUserDetail() {
           <p className="mt-1 font-mono text-xs text-slate-500">{id}</p>
           {user && (
             <div className="mt-2 flex flex-wrap gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                {user.isActive ? 'Active' : 'Inactive'}
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  user.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {user.isActive ? 'Released' : 'On hold'}
               </span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{user.role ?? '—'}</span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">KYC: {user.kycStatus ?? 'none'}</span>

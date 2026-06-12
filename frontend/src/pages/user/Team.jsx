@@ -125,11 +125,11 @@ export default function Team() {
         <TeamIcon />
         {isAdmin ? 'My Team' : 'Team'}
       </h1>
-      <p className="mt-1 text-slate-600">
-        {isAdmin
-          ? 'Manage your downline. View details and edit team members.'
-          : 'Your direct referrals. You can edit name, email, and mobile for members who joined with your referral ID.'}
-      </p>
+      {!isAdmin && (
+        <p className="mt-1 text-slate-600">
+          Your direct referrals. You can edit name, email, and mobile for members who joined with your referral ID.
+        </p>
+      )}
       <div className="mt-8 rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
