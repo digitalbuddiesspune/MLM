@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../../api/products.js';
-import ProductImage from '../../components/ProductImage.jsx';
+import ProductCard from '../../components/ProductCard.jsx';
 
 const PRODUCTS_QUERY_KEY = ['products'];
 
@@ -13,7 +13,7 @@ export default function ProductsSection() {
   const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load products') : '';
 
   return (
-    <section id="products" className="border-t border-slate-100 bg-teal-50/50 px-4 py-16 sm:px-6 lg:px-8">
+    <section id="products" className="border-t border-slate-200 bg-white px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <h2 className="text-3xl font-bold text-slate-900 text-center">Our products</h2>
         <p className="mt-4 text-lg text-slate-600 text-center">
@@ -32,18 +32,13 @@ export default function ProductsSection() {
               <p className="mt-2 text-sm text-slate-400">Check back soon.</p>
             </div>
           ) : (
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
               {products.map((product) => (
-                <article
+                <ProductCard
                   key={product._id}
-                  className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                  imageUrl={product.imageUrl}
+                  imageAlt={product.name}
                 >
-                  <ProductImage
-                    src={product.imageUrl}
-                    alt={product.name}
-                    variant="card"
-                    className="mb-4"
-                  />
                   <h3 className="text-xl font-semibold text-slate-900">{product.name}</h3>
                   {product.description && (
                     <p className="mt-3 text-slate-600">{product.description}</p>
@@ -58,7 +53,7 @@ export default function ProductsSection() {
                       </span>
                     )}
                   </div>
-                </article>
+                </ProductCard>
               ))}
             </div>
           )}

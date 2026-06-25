@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../api/products.js';
-import ProductImage from '../components/ProductImage.jsx';
+import ProductCard from '../components/ProductCard.jsx';
 
 export default function Products() {
   const { data: products = [], isLoading: loading, error: queryError } = useQuery({
@@ -19,8 +19,8 @@ export default function Products() {
             alt="Amruta Wellness"
             className="mx-auto h-16 w-16 object-contain"
           />
-          <h1 className="mt-4 text-4xl font-bold text-slate-900">Our products</h1>
-          <p className="mt-4 text-lg text-slate-600">
+          <h1 className="mt-4 text-xl font-bold text-slate-900 sm:text-4xl">Our products</h1>
+          <p className="mt-3 text-xs text-slate-600 sm:mt-4 sm:text-lg">
             Trusted wellness and healthcare products for everyday life.
           </p>
         </div>
@@ -39,33 +39,28 @@ export default function Products() {
             <p className="mt-2 text-sm text-slate-400">Check back soon.</p>
           </div>
         ) : (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-6">
             {products.map((product) => (
-              <article
+              <ProductCard
                 key={product._id}
-                className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                imageUrl={product.imageUrl}
+                imageAlt={product.name}
               >
-                <ProductImage
-                  src={product.imageUrl}
-                  alt={product.name}
-                  variant="card"
-                  className="mb-4"
-                />
-                <h2 className="text-xl font-semibold text-slate-900">{product.name}</h2>
+                <h2 className="line-clamp-2 text-[11px] font-semibold leading-snug text-slate-900 sm:text-xl">{product.name}</h2>
                 {product.description && (
-                  <p className="mt-3 text-slate-600">{product.description}</p>
+                  <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-slate-600 sm:mt-3 sm:text-base">{product.description}</p>
                 )}
-                <div className="mt-4 flex items-center justify-between gap-4">
-                  <span className="text-lg font-bold text-teal-600">
+                <div className="mt-2 flex items-center justify-between gap-1 sm:mt-4 sm:gap-4">
+                  <span className="text-[11px] font-bold text-teal-600 sm:text-lg">
                     ₹{product.price?.toLocaleString() ?? '0'}
                   </span>
                   {product.businessVolume > 0 && (
-                    <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700">
+                    <span className="rounded-full bg-teal-50 px-1.5 py-0.5 text-[9px] font-medium text-teal-700 sm:px-2.5 sm:text-xs">
                       BV: {product.businessVolume}
                     </span>
                   )}
                 </div>
-              </article>
+              </ProductCard>
             ))}
           </div>
         )}

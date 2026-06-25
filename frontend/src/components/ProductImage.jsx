@@ -3,9 +3,17 @@ const VARIANTS = {
     wrap: 'aspect-[4/3] w-full rounded-xl bg-slate-50',
     img: 'h-full w-full object-contain p-4',
   },
+  cardCover: {
+    wrap: 'aspect-[4/3] w-full overflow-hidden bg-slate-50',
+    img: 'h-full w-full object-cover object-center',
+  },
   cardMuted: {
     wrap: 'aspect-[4/3] w-full rounded-xl bg-[#dfe4e8]',
     img: 'h-full w-full object-contain p-4',
+  },
+  cardCoverMuted: {
+    wrap: 'aspect-[4/3] w-full overflow-hidden bg-[#dfe4e8]',
+    img: 'h-full w-full object-cover object-center',
   },
   thumb: {
     wrap: 'h-20 w-20 shrink-0 rounded-lg bg-slate-50',

@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { clearCart, getCart, removeFromCart, updateCartItem } from '../api/cart.js';
+import { clearCart, getCart, removeFromCart } from '../api/cart.js';
 import { isAuthenticated } from '../api/auth.js';
 import ProductImage from '../components/ProductImage.jsx';
+import CartQuantityControl from '../components/CartQuantityControl.jsx';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -18,13 +19,6 @@ export default function Cart() {
 
   const removeMutation = useMutation({
     mutationFn: removeFromCart,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
-    },
-  });
-
-  const updateQtyMutation = useMutation({
-    mutationFn: ({ productId, quantity }) => updateCartItem(productId, quantity),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
@@ -93,7 +87,7 @@ export default function Cart() {
               </button>
             </div>
             {items.map((item) => (
-              <article key={item.product._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+              <article key={item.product._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-md">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
                     <ProductImage src={item.product.imageUrl} alt={item.product.name} variant="thumb" />
@@ -105,34 +99,13 @@ export default function Cart() {
                       <p className="text-sm font-semibold text-teal-700">
                         Rs {Number(item.lineTotal ?? 0).toLocaleString()}
                       </p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = Math.max(1, item.quantity - 1);
-                            updateQtyMutation.mutate({ productId: item.product._id, quantity: next });
-                          }}
-                          disabled={item.quantity <= 1 || updateQtyMutation.isPending}
-                          className="h-8 w-8 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                          aria-label={`Decrease quantity for ${item.product.name}`}
-                        >
-                          -
-                        </button>
-                        <span className="min-w-8 text-center text-sm font-semibold text-slate-900">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            updateQtyMutation.mutate({
-                              productId: item.product._id,
-                              quantity: item.quantity + 1,
-                            });
-                          }}
-                          disabled={updateQtyMutation.isPending}
-                          className="h-8 w-8 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                          aria-label={`Increase quantity for ${item.product.name}`}
-                        >
-                          +
-                        </button>
+                      <div className="mt-2 w-32">
+                        <CartQuantityControl
+                          productId={item.product._id}
+                          variant="slate"
+                          fullWidth
+                          compact
+                        />
                       </div>
                     </div>
                   </div>

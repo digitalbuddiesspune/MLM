@@ -1,1 +1,64 @@
 @import "tailwindcss";
+
+@keyframes cart-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cart-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cart-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes cart-expand-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cart-badge-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@theme {
+  --animate-cart-pop: cart-pop 0.35s ease-out;
+  --animate-cart-slide-in: cart-slide-in 0.35s ease-out;
+  --animate-cart-fade-out: cart-fade-out 0.25s ease-in forwards;
+  --animate-cart-expand-in: cart-expand-in 0.3s ease-out;
+  --animate-cart-badge-pulse: cart-badge-pulse 0.45s ease-out;
+}

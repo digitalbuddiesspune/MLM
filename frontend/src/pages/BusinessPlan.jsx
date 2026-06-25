@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../api/products.js';
-import ProductImage from '../components/ProductImage.jsx';
+import ProductCard from '../components/ProductCard.jsx';
 import { isAuthenticated } from '../api/auth.js';
-import { addToCart } from '../api/cart.js';
+import CartQuantityControl from '../components/CartQuantityControl.jsx';
+import CartToast from '../components/CartToast.jsx';
+import BinaryPlanWorksSection from '../components/home/BinaryPlanWorksSection.jsx';
 
 export default function BusinessPlan() {
-  const queryClient = useQueryClient();
   const [addedMessage, setAddedMessage] = useState('');
   const businessHighlights = [
     {
@@ -27,40 +28,15 @@ export default function BusinessPlan() {
     },
   ];
 
-  const binarySteps = [
-    'User A is the parent node; users B and C are child nodes in the binary tree.',
-    'When both B and C join under A, user A gets automatically activated.',
-    'Each user joins the plan by purchasing products worth Rs 1500.',
-    'Users can sponsor new members using their sponsor ID and grow their network.',
-    'Level, reward, and joining bonus are applied based on total sponsored users.',
-  ];
-
-  const levelSets = [
-    { level: 'Level 1', name: 'Star', minUsers: '10+', reward: 'Remote', joiningBonus: 'Rs 20' },
-    { level: 'Level 2', name: 'Rubi Star', minUsers: '100+', reward: 'Digital Watch', joiningBonus: 'Rs 10' },
-    { level: 'Level 3', name: 'Silver', minUsers: '1000+', reward: 'Mobile', joiningBonus: 'Rs 10' },
-    { level: 'Level 4', name: 'Platinum', minUsers: '5000+', reward: 'Laptop', joiningBonus: 'Rs 10' },
-    { level: 'Level 5', name: 'Gold', minUsers: '20000+', reward: 'Two Wheeler', joiningBonus: 'Rs 10' },
-    { level: 'Level 6', name: 'Diamond', minUsers: '100000+', reward: 'Four Wheeler', joiningBonus: 'Rs 8' },
-  ];
-
   const { data: products = [], isLoading: loading, error: queryError } = useQuery({
     queryKey: ['business-plan', 'products'],
     queryFn: getProducts,
     select: (res) => res?.data?.products ?? [],
   });
   const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load products') : '';
-  const addToCartMutation = useMutation({
-    mutationFn: (productId) => addToCart(productId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
-      setAddedMessage('Product added to cart');
-      setTimeout(() => setAddedMessage(''), 1400);
-    },
-  });
 
   return (
-    <div className="bg-[#dfe3e6]">
+    <div className="bg-white">
       <section className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="relative overflow-hidden rounded-[28px] bg-[#e9edef] px-6 py-12 sm:px-10 sm:py-14 lg:px-16 lg:py-16">
@@ -138,72 +114,13 @@ export default function BusinessPlan() {
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl rounded-3xl border border-[#ccd3d8] bg-[#e9edef] p-6 sm:p-10">
-          <h2 className="text-3xl font-bold text-[#111827]">How the Binary Plan Works</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {binarySteps.map((step, index) => (
-              <div
-                key={step}
-                className="relative overflow-hidden rounded-xl border border-[#ccd3d8] bg-[#f3f6f8] px-4 py-4"
-              >
-                <span className="pointer-events-none absolute -right-2 -top-4 text-8xl font-black leading-none text-[#5a8f3f] opacity-20">
-                  {index + 1}
-                </span>
-                <p className="relative z-10 pr-8 text-sm leading-relaxed text-[#2a3442]">
-                  {step}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 rounded-2xl border border-[#ccd3d8] bg-[#f3f6f8] p-6">
-            <h3 className="text-xl font-bold text-[#111827]">Our Vision</h3>
-            <p className="mt-3 text-base leading-relaxed text-[#2a3442]">
-              We believe good health and financial independence go hand in hand. Through quality wellness products and
-              a transparent business model, Amruta Wellness empowers individuals to build better lives.
-            </p>
-          </div>
-
-          <div className="mt-8 rounded-2xl border border-[#ccd3d8] bg-[#f3f6f8] p-6">
-            <h3 className="text-xl font-bold text-[#111827]">Level Sets, Rewards and Joining Bonus</h3>
-            <p className="mt-2 text-sm text-[#2a3442]">
-              Levels are based on how many users you add with your sponsor ID.
-            </p>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-[#ccd3d8] text-[#111827]">
-                    <th className="px-3 py-2 font-semibold">Level</th>
-                    <th className="px-3 py-2 font-semibold">Level Name</th>
-                    <th className="px-3 py-2 font-semibold">Users Added</th>
-                    <th className="px-3 py-2 font-semibold">Reward</th>
-                    <th className="px-3 py-2 font-semibold">Joining Bonus</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {levelSets.map((item) => (
-                    <tr key={item.level} className="border-b border-[#dde3e8] last:border-b-0">
-                      <td className="px-3 py-2 font-medium text-[#5a8f3f]">{item.level}</td>
-                      <td className="px-3 py-2 text-[#111827]">{item.name}</td>
-                      <td className="px-3 py-2 text-[#2a3442]">{item.minUsers}</td>
-                      <td className="px-3 py-2 text-[#2a3442]">{item.reward}</td>
-                      <td className="px-3 py-2 text-[#2a3442]">{item.joiningBonus}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-[#ccd3d8] bg-white p-4 shadow-sm sm:p-6">
-          <img
-            className="mx-auto block h-auto w-full max-w-4xl object-contain"
-            src="https://res.cloudinary.com/dq3meq3qa/image/upload/v1773731732/Add_a_heading_k5ecfp.svg"
-            alt="Amruta Wellness binary business plan diagram"
-          />
-        </div>
+      <BinaryPlanWorksSection />
+      <section className="w-full py-10 sm:py-12">
+        <img
+          className="mx-auto block h-auto w-full max-w-7xl rounded-2xl object-contain sm:rounded-3xl"
+          src="https://res.cloudinary.com/dq3meq3qa/image/upload/v1773731732/Add_a_heading_k5ecfp.svg"
+          alt="Amruta Wellness binary business plan diagram"
+        />
       </section>
 
       <section className="border-t border-[#ccd3d8] px-4 py-16 sm:px-6 lg:px-8">
@@ -211,7 +128,7 @@ export default function BusinessPlan() {
           <div className="text-center">
             <h2 className="text-3xl font-bold text-[#111827]">Products</h2>
             <p className="mt-2 text-[#2a3442]">Choose a product and get started with Amruta Wellness.</p>
-            {addedMessage && <p className="mt-2 text-sm font-semibold text-teal-700">{addedMessage}</p>}
+            <CartToast message={addedMessage} onDone={() => setAddedMessage('')} />
           </div>
 
           <div className="mt-10">
@@ -226,43 +143,40 @@ export default function BusinessPlan() {
                 No products available yet.
               </div>
             ) : (
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
                 {products.map((product) => (
-                  <article
+                  <ProductCard
                     key={product._id}
-                    className="flex h-full flex-col rounded-2xl border border-[#ccd3d8] bg-[#edf1f3] p-6 shadow-sm transition-shadow hover:shadow-lg"
+                    imageUrl={product.imageUrl}
+                    imageAlt={product.name}
+                    imageVariant="cardCoverMuted"
+                    className="border-[#ccd3d8] bg-[#edf1f3] hover:shadow-lg"
                   >
-                    <ProductImage
-                      src={product.imageUrl}
-                      alt={product.name}
-                      variant="cardMuted"
-                      className="mb-4"
-                    />
-                    <h3 className="text-xl font-semibold text-[#111827]">{product.name}</h3>
+                    <h3 className="line-clamp-2 text-[11px] font-semibold leading-snug text-[#111827] sm:text-xl">{product.name}</h3>
                     {product.description && (
-                      <p className="mt-2 text-[#2a3442]">{product.description}</p>
+                      <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-[#2a3442] sm:mt-2 sm:text-base">{product.description}</p>
                     )}
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-lg font-bold text-[#0f766e]">
+                    <div className="mt-2 flex items-center justify-between sm:mt-4">
+                      <span className="text-[11px] font-bold text-[#0f766e] sm:text-lg">
                         Rs {product.price?.toLocaleString() ?? '0'}
                       </span>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
                       <Link
                         to={isAuthenticated() ? `/checkout?productId=${product._id}` : '/register'}
-                        className="inline-flex items-center justify-center rounded-lg bg-[#0b0d10] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1c232b]"
+                        className="inline-flex items-center justify-center rounded-lg bg-[#0b0d10] px-2 py-1.5 text-[10px] font-semibold text-white hover:bg-[#1c232b] sm:px-4 sm:py-2 sm:text-sm"
                       >
-                        I'm Interested
+                        Buy Plan
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => addToCartMutation.mutate(product._id)}
-                        className="inline-flex items-center justify-center rounded-lg border border-[#0b0d10] px-4 py-2 text-sm font-semibold text-[#0b0d10] hover:bg-[#d7dde1]"
-                      >
-                        Add to Cart
-                      </button>
+                      <CartQuantityControl
+                        productId={product._id}
+                        variant="dark"
+                        fullWidth
+                        compact
+                        onAdded={() => setAddedMessage('Product added to cart')}
+                      />
                     </div>
-                  </article>
+                  </ProductCard>
                 ))}
               </div>
             )}

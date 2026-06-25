@@ -44,7 +44,7 @@ export default function ContactSection() {
   };
 
   return (
-    <section id="contact" className="border-t border-slate-300 bg-[#dfe3e6] px-4 py-16 sm:px-6 lg:px-8">
+    <section id="contact" className="border-t border-slate-200 bg-white px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <h2 className="text-center text-3xl font-bold text-slate-900">Contact Us</h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-slate-600">

@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMyOrders } from '../../api/orders.js';
 import { getProducts } from '../../api/products.js';
 import { createOrder, verifyOrderPayment } from '../../api/orders.js';
-import { addToCart, getCart } from '../../api/cart.js';
+import { getCart } from '../../api/cart.js';
 import { getStoredUser } from '../../api/auth.js';
-import ProductImage from '../../components/ProductImage.jsx';
+import ProductCard from '../../components/ProductCard.jsx';
+import CartQuantityControl from '../../components/CartQuantityControl.jsx';
+import CartToast from '../../components/CartToast.jsx';
 
 export default function MyPlan() {
   const queryClient = useQueryClient();
@@ -15,6 +17,7 @@ export default function MyPlan() {
   const purchaseSuccess = searchParams.get('purchase') === 'success';
   const user = getStoredUser();
   const [cartToast, setCartToast] = useState('');
+  const [badgePulse, setBadgePulse] = useState(false);
 
   const { data, isLoading: loading, error: queryError } = useQuery({
     queryKey: ['user', 'my-orders'],
@@ -30,18 +33,11 @@ export default function MyPlan() {
     queryFn: getCart,
   });
 
-  const addToCartMutation = useMutation({
-    mutationFn: ({ productId, quantity }) => addToCart(productId, quantity),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
-      setCartToast('Added to cart');
-      setTimeout(() => setCartToast(''), 2000);
-    },
-    onError: (e) => {
-      setCartToast(e?.response?.data?.error ?? 'Could not add to cart');
-      setTimeout(() => setCartToast(''), 3000);
-    },
-  });
+  const handleCartChange = () => {
+    setCartToast('Added to cart');
+    setBadgePulse(true);
+    window.setTimeout(() => setBadgePulse(false), 500);
+  };
 
   const error = queryError ? (queryError.response?.data?.error ?? 'Failed to load your plan') : '';
   const orders = data?.data?.orders ?? [];
@@ -137,16 +133,18 @@ export default function MyPlan() {
           </svg>
           View cart
           {cartCount > 0 && (
-            <span className="rounded-full bg-teal-500 px-2 py-0.5 text-xs font-bold">{cartCount}</span>
+            <span
+              className={`rounded-full bg-teal-500 px-2 py-0.5 text-xs font-bold ${
+                badgePulse ? 'animate-cart-badge-pulse' : ''
+              }`}
+            >
+              {cartCount}
+            </span>
           )}
         </Link>
       </div>
 
-      {cartToast && (
-        <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm text-teal-800">
-          {cartToast}
-        </div>
-      )}
+      <CartToast message={cartToast} onDone={() => setCartToast('')} />
 
       {purchaseSuccess && (
         <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -170,11 +168,15 @@ export default function MyPlan() {
             No active products available.
           </div>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {products.map((product) => (
-              <article key={product._id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <ProductImage src={product.imageUrl} alt={product.name} variant="card" />
-                <h3 className="mt-3 text-base font-semibold text-slate-900">{product.name}</h3>
+              <ProductCard
+                key={product._id}
+                imageUrl={product.imageUrl}
+                imageAlt={product.name}
+                className="rounded-xl"
+              >
+                <h3 className="text-base font-semibold text-slate-900">{product.name}</h3>
                 {product.description ? (
                   <p className="mt-1 line-clamp-2 flex-1 text-sm text-slate-600">{product.description}</p>
                 ) : (
@@ -187,14 +189,11 @@ export default function MyPlan() {
                   <p className="text-xs text-slate-500">BV: {product.businessVolume}</p>
                 )}
                 <div className="mt-4 flex w-full flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addToCartMutation.mutate({ productId: product._id, quantity: 1 })}
-                    disabled={addToCartMutation.isPending}
-                    className="inline-flex w-full items-center justify-center rounded-lg border border-teal-600 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-800 hover:bg-teal-100 disabled:opacity-60"
-                  >
-                    Add to cart
-                  </button>
+                  <CartQuantityControl
+                    productId={product._id}
+                    variant="teal"
+                    onAdded={handleCartChange}
+                  />
                   <button
                     type="button"
                     onClick={() => handleBuyPlanDirect(product)}
@@ -209,7 +208,7 @@ export default function MyPlan() {
                     Checkout with address
                   </Link>
                 </div>
-              </article>
+              </ProductCard>
             ))}
           </div>
         )}
@@ -237,15 +236,15 @@ export default function MyPlan() {
         )}
 
         {!loading && !error && paidOrders.length > 0 && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {paidOrders.map((order) => (
-              <article key={order._id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <ProductImage
-                  src={order.productSnapshot?.imageUrl}
-                  alt={order.productSnapshot?.name ?? 'Product'}
-                  variant="card"
-                />
-                <h3 className="mt-3 text-base font-semibold text-slate-900">{order.productSnapshot?.name ?? 'Product'}</h3>
+              <ProductCard
+                key={order._id}
+                imageUrl={order.productSnapshot?.imageUrl}
+                imageAlt={order.productSnapshot?.name ?? 'Product'}
+                className="rounded-xl"
+              >
+                <h3 className="text-base font-semibold text-slate-900">{order.productSnapshot?.name ?? 'Product'}</h3>
                 <p className="mt-1 text-sm text-slate-700">
                   Amount: <span className="font-medium">Rs {order.amount?.toLocaleString() ?? 0}</span>
                 </p>
@@ -255,7 +254,7 @@ export default function MyPlan() {
                 <span className="mt-auto inline-flex w-fit rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
                   Paid
                 </span>
-              </article>
+              </ProductCard>
             ))}
           </div>
         )}

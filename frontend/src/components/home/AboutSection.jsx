@@ -20,7 +20,7 @@ export default function AboutSection() {
   ];
 
   return (
-    <section id="about" className="border-t border-slate-800 bg-[#dfe3e6] px-4 py-16 sm:px-6 lg:px-8">
+    <section id="about" className="border-t border-slate-200 bg-white px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="relative overflow-hidden rounded-[28px] bg-[#e9edef] px-6 py-12 sm:px-10 sm:py-14 lg:px-16 lg:py-16">
           <span className="absolute left-10 top-20 h-4 w-4 rounded-full bg-[#8ecf5a]" aria-hidden />

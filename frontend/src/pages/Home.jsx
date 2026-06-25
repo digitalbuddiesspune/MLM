@@ -115,7 +115,7 @@ export default function Home() {
       {/* <ProductsSection /> */}
       <ContactSection />
 
-      <section className="border-t border-slate-300 bg-[#dfe3e6] px-4 py-12 sm:py-16 sm:px-6 lg:px-8">
+      <section className="border-t border-slate-200 bg-white px-4 py-12 sm:py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Ready to start?</h2>
           <p className="mt-2 text-sm sm:text-base text-slate-600">
