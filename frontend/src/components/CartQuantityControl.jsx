@@ -111,7 +111,7 @@ export default function CartQuantityControl({
         to="/login"
         className={`inline-flex ${widthClass} items-center justify-center rounded-lg px-4 py-2 font-medium transition-colors ${sizeClass} ${styles.add}`}
       >
-        Add to cart
+        Buy Now
       </Link>
     );
   }
@@ -126,7 +126,7 @@ export default function CartQuantityControl({
           highlight ? `scale-[1.02] ring-2 ${styles.ring}` : ''
         }`}
       >
-        Add to cart
+        Buy Now
       </button>
     );
   }
